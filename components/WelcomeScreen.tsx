@@ -91,7 +91,7 @@ export default function WelcomeScreen() {
         <PrivacyPolicyScreen
           privacyAnimation={privacyAnimation}
           onClose={() => closePrivacyPolicy()}
-          onAccept={() => closePrivacyPolicy(() => router.push("/login"))}
+          onAccept={() => closePrivacyPolicy(() => router.push("/onboarding"))}
         />
       ) : null}
     </SafeAreaView>
