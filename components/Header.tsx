@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
-type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 interface HeaderProps {
   notificationCount?: number;
@@ -18,10 +18,26 @@ export function Header({
   onSearchPress,
   onCalendarPress,
 }: HeaderProps) {
+  const router = useRouter();
+
+  const handleAvatarPress = () => {
+    onAvatarPress?.();
+    router.push("/profile");
+  };
+
+  const handleCalendarPress = () => {
+    if (onCalendarPress) {
+      onCalendarPress();
+      return;
+    }
+
+    router.push("/calendar");
+  };
+
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
       {/* Avatar */}
-      <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.7}>
+      <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.7}>
         <View
           style={{
             width: 42,
@@ -71,7 +87,7 @@ export function Header({
           <Ionicons name="search-outline" size={26} color="#E2E8F0" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onCalendarPress} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleCalendarPress} activeOpacity={0.7}>
           <Ionicons name="calendar-outline" size={26} color="#E2E8F0" />
         </TouchableOpacity>
       </View>

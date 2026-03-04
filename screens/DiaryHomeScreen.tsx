@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
@@ -13,6 +14,49 @@ import { SummaryGrid, PixelGrid } from "../components/SummaryGrid";
 
 const CALORIES_GOAL = 3000;
 
+function parseIsoDate(value?: string | string[]): Date | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+
+  if (!raw) {
+    return null;
+  }
+
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getDaySelectorIndex(date: Date): number {
+  const day = date.getDay();
+
+  return day === 0 ? 6 : day - 1;
+}
+
 interface DiaryState {
   currentDayIndex: number;
   consumed: number;
@@ -22,8 +66,15 @@ interface DiaryState {
 }
 
 export default function DiaryHomeScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ date?: string }>();
+
+  const selectedDate = useMemo(() => parseIsoDate(params.date), [params.date]);
+  const selectedDateForCalendar = selectedDate ?? new Date();
+  const selectedDateIso = formatIsoDate(selectedDateForCalendar);
+
   const [state, setState] = useState<DiaryState>({
-    currentDayIndex: 0,
+    currentDayIndex: getDaySelectorIndex(selectedDateForCalendar),
     consumed: 0,
     isSummaryCollapsed: false,
     showCustomMeals: true,
@@ -34,6 +85,14 @@ export default function DiaryHomeScreen() {
 
   const updateState = (partial: Partial<DiaryState>) =>
     setState((prev) => ({ ...prev, ...partial }));
+
+  useEffect(() => {
+    if (!selectedDate) {
+      return;
+    }
+
+    updateState({ currentDayIndex: getDaySelectorIndex(selectedDate) });
+  }, [selectedDate]);
 
   return (
     <SafeAreaView
@@ -46,7 +105,10 @@ export default function DiaryHomeScreen() {
           contentContainerStyle={{ paddingBottom: 116 }}
         >
         {/* ── Header ── */}
-        <Header notificationCount={1} />
+        <Header
+          notificationCount={1}
+          onCalendarPress={() => router.push(`/calendar?date=${selectedDateIso}`)}
+        />
 
         {/* ── Day Selector ── */}
         <DaySelector
@@ -74,29 +136,29 @@ export default function DiaryHomeScreen() {
           title="Breakfast"
           iconName="partly-sunny"
           iconColor="#FBBF24"
-          onPress={() => {}}
-          onAdd={() => {}}
+          onPress={() => router.push("/add-meal?meal=Breakfast")}
+          onAdd={() => router.push("/add-meal?meal=Breakfast")}
         />
         <MealSection
           title="Lunch"
           iconName="sunny"
           iconColor="#EAB308"
-          onPress={() => {}}
-          onAdd={() => {}}
+          onPress={() => router.push("/add-meal?meal=Lunch")}
+          onAdd={() => router.push("/add-meal?meal=Lunch")}
         />
         <MealSection
           title="Dinner"
-          iconName="sunset"
+          iconName="sunset-outline"
           iconColor="#F97316"
-          onPress={() => {}}
-          onAdd={() => {}}
+          onPress={() => router.push("/add-meal?meal=Dinner")}
+          onAdd={() => router.push("/add-meal?meal=Dinner")}
         />
         <MealSection
           title="Snacks/Other"
           iconName="moon"
           iconColor="#A78BFA"
-          onPress={() => {}}
-          onAdd={() => {}}
+          onPress={() => router.push("/add-meal?meal=Snacks")}
+          onAdd={() => router.push("/add-meal?meal=Snacks")}
         />
 
         {/* ── Info Cards ── */}

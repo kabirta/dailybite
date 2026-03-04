@@ -13,6 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppBottomNav } from "../components/AppBottomNav";
 
+// ─── Data (unchanged) ─────────────────────────────────────────────────────────
+
 const REPORT_TABS = [
   { key: "calories", label: "CALORIES" },
   { key: "macros", label: "MACROS" },
@@ -51,6 +53,18 @@ const NUTRIENT_ROWS = [
   { label: "Potassium (mg)", total: "-", goal: "-", delta: "-" },
 ];
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+
+const BG = "#030A23";
+const CARD = "#0D1526";
+const BORDER = "#1A2744";
+const TEXT_PRIMARY = "#F1F5F9";
+const TEXT_SECONDARY = "#9CA3AF";
+const ACCENT = "#22C55E";
+const GRID_LINE = "#1A2744";
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
 function ChartGrid() {
   return (
     <View style={{ height: 170, marginBottom: 10 }}>
@@ -61,42 +75,25 @@ function ChartGrid() {
             style={{
               flex: 1,
               borderLeftWidth: index === 0 ? 0 : 1,
-              borderLeftColor: "#383D48",
+              borderLeftColor: GRID_LINE,
             }}
           />
         ))}
       </View>
 
-      <View
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 43,
-          borderTopWidth: 1,
-          borderTopColor: "#383D48",
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 86,
-          borderTopWidth: 1,
-          borderTopColor: "#383D48",
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 129,
-          borderTopWidth: 1,
-          borderTopColor: "#383D48",
-        }}
-      />
+      {[43, 86, 129].map((top) => (
+        <View
+          key={top}
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top,
+            borderTopWidth: 1,
+            borderTopColor: GRID_LINE,
+          }}
+        />
+      ))}
     </View>
   );
 }
@@ -107,7 +104,13 @@ function DayLabels() {
       {WEEK_DAYS.map((day) => (
         <Text
           key={day}
-          style={{ flex: 1, textAlign: "center", color: "#B9BEC8", fontSize: 12 }}
+          style={{
+            flex: 1,
+            textAlign: "center",
+            color: TEXT_SECONDARY,
+            fontSize: 11,
+            fontWeight: "500",
+          }}
         >
           {day}
         </Text>
@@ -116,6 +119,54 @@ function DayLabels() {
   );
 }
 
+function Card({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: object;
+}) {
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: CARD,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: BORDER,
+          overflow: "hidden",
+        },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+function SectionTitle({ text }: { text: string }) {
+  return (
+    <Text
+      style={{
+        color: TEXT_PRIMARY,
+        fontSize: 16,
+        fontWeight: "700",
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 12,
+      }}
+    >
+      {text}
+    </Text>
+  );
+}
+
+function RowDivider() {
+  return <View style={{ height: 1, backgroundColor: BORDER }} />;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+
 function ReportsHeader() {
   return (
     <View
@@ -123,67 +174,76 @@ function ReportsHeader() {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: 14,
+        marginBottom: 16,
+        paddingHorizontal: 4,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <View
+      {/* Left: nutrition + notifications */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <TouchableOpacity
+          activeOpacity={0.8}
           style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: "#2A3142",
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: "#1E2A45",
             alignItems: "center",
             justifyContent: "center",
-            marginRight: 10,
           }}
         >
           <View
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
+              width: 34,
+              height: 34,
+              borderRadius: 17,
               backgroundColor: "#EFE6CE",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Ionicons name="nutrition-outline" size={30} color="#8D7A5D" />
+            <Ionicons name="nutrition-outline" size={20} color="#8D7A5D" />
           </View>
-        </View>
+        </TouchableOpacity>
 
-        <View
+        <TouchableOpacity
+          activeOpacity={0.8}
           style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: "#2A3142",
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: "#1E2A45",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="notifications-outline" size={30} color="#E5E7EB" />
-        </View>
+          <Ionicons name="notifications-outline" size={22} color={TEXT_PRIMARY} />
+        </TouchableOpacity>
       </View>
 
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: "#E5E7EB", fontSize: 37, marginRight: 10 }}>Goals</Text>
-        <View
+      {/* Right: Goals + locate */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text style={{ color: TEXT_PRIMARY, fontSize: 22, fontWeight: "700" }}>
+          Goals
+        </Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
           style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: "#2A3142",
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: "#1E2A45",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="locate-outline" size={30} color="#E5E7EB" />
-        </View>
+          <Ionicons name="locate-outline" size={22} color={TEXT_PRIMARY} />
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+// ─── Week Picker ──────────────────────────────────────────────────────────────
 
 function WeekPicker() {
   return (
@@ -191,102 +251,123 @@ function WeekPicker() {
       style={{
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#2B2D33",
+        backgroundColor: CARD,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: "#3D4048",
+        borderColor: BORDER,
         marginBottom: 16,
+        overflow: "hidden",
       }}
     >
       <TouchableOpacity
         activeOpacity={0.8}
         style={{
-          width: 56,
-          height: 54,
+          width: 52,
+          height: 50,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Ionicons name="caret-back" size={24} color="#D1D5DB" />
+        <Ionicons name="caret-back" size={20} color={TEXT_PRIMARY} />
       </TouchableOpacity>
 
       <View
         style={{
           flex: 1,
-          height: 54,
+          height: 50,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           borderLeftWidth: 1,
           borderRightWidth: 1,
-          borderColor: "#3D4048",
+          borderColor: BORDER,
           paddingHorizontal: 14,
         }}
       >
-        <Text style={{ color: "#E5E7EB", fontSize: 24, fontWeight: "500" }}>
+        <Text style={{ color: TEXT_PRIMARY, fontSize: 16, fontWeight: "600" }}>
           This Week
         </Text>
-        <Ionicons name="chevron-down" size={24} color="#D1D5DB" />
+        <Ionicons name="chevron-down" size={18} color={TEXT_SECONDARY} />
       </View>
 
       <TouchableOpacity
         activeOpacity={0.8}
         style={{
-          width: 56,
-          height: 54,
+          width: 52,
+          height: 50,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Ionicons name="caret-forward" size={24} color="#D1D5DB" />
+        <Ionicons name="caret-forward" size={20} color={TEXT_PRIMARY} />
       </TouchableOpacity>
     </View>
   );
 }
 
+// ─── Calories Panel ───────────────────────────────────────────────────────────
+
 function CaloriesPanel() {
   return (
-    <View>
-      <View
-        style={{
-          backgroundColor: "#22262F",
-          borderWidth: 1,
-          borderColor: "#353A45",
-          borderRadius: 4,
-          marginBottom: 14,
-        }}
-      >
-        <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 }}>
-          <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "600" }}>
-            Calories
+    <View style={{ gap: 12 }}>
+      {/* Calories chart card */}
+      <Card>
+        <View style={{ padding: 16 }}>
+          <Text style={{ color: TEXT_SECONDARY, fontSize: 12, fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
+            Weekly Total
           </Text>
           <Text
-            style={{ color: "#F3F4F6", fontSize: 54, fontWeight: "500", lineHeight: 62 }}
+            style={{
+              color: TEXT_PRIMARY,
+              fontSize: 48,
+              fontWeight: "700",
+              lineHeight: 56,
+            }}
           >
             0
+          </Text>
+          <Text style={{ color: TEXT_SECONDARY, fontSize: 12, marginBottom: 14 }}>
+            kcal
           </Text>
 
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
+              marginBottom: 14,
             }}
           >
-            <Text style={{ color: "#B9BEC8", fontSize: 15, fontWeight: "600" }}>
-              Daily Average: 0
-            </Text>
-            <Text style={{ color: "#B9BEC8", fontSize: 15, fontWeight: "600" }}>
-              Goal: 3000kcal
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: TEXT_SECONDARY }} />
+              <Text style={{ color: TEXT_SECONDARY, fontSize: 13 }}>
+                Daily Avg: 0
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: "rgba(34,197,94,0.1)",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 20,
+              }}
+            >
+              <Ionicons name="flag" size={12} color={ACCENT} />
+              <Text style={{ color: ACCENT, fontSize: 12, fontWeight: "600" }}>
+                Goal: 3000 kcal
+              </Text>
+            </View>
           </View>
 
+          {/* Dashed divider */}
           <View
             style={{
-              borderTopWidth: 2,
-              borderTopColor: "#D8DADE",
+              borderTopWidth: 1,
+              borderTopColor: BORDER,
               borderStyle: "dashed",
-              marginBottom: 10,
+              marginBottom: 12,
             }}
           />
 
@@ -294,389 +375,337 @@ function CaloriesPanel() {
           <DayLabels />
         </View>
 
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderTopColor: "#3A3F4B",
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-          }}
-        >
-          <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-            <Text
-              style={{
-                width: 92,
-                textAlign: "right",
-                color: "#B9BEC8",
-                fontSize: 15,
-                fontWeight: "600",
-              }}
-            >
-              Cals{"\n"}(kcal)
-            </Text>
-          </View>
-        </View>
-
-        {MEAL_ROWS.map((meal) => (
-          <View
-            key={meal.label}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              borderTopWidth: 1,
-              borderTopColor: "#3A3F4B",
-              paddingHorizontal: 14,
-              paddingVertical: 14,
-            }}
-          >
-            <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
-              <View
-                style={{ width: 12, height: 12, backgroundColor: meal.color, marginRight: 10 }}
-              />
-              <Text style={{ color: "#66D46E", fontSize: 16 }}>{meal.label}</Text>
-            </View>
-            <Text style={{ width: 82, textAlign: "right", color: "#E5E7EB", fontSize: 16 }}>
-              (0%)
-            </Text>
-            <Text style={{ width: 42, textAlign: "right", color: "#66D46E", fontSize: 20 }}>
-              -
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View
-        style={{
-          backgroundColor: "#22262F",
-          borderWidth: 1,
-          borderColor: "#353A45",
-          borderRadius: 4,
-        }}
-      >
-        <Text
-          style={{
-            color: "#E5E7EB",
-            fontSize: 39,
-            fontWeight: "500",
-            paddingHorizontal: 14,
-            paddingTop: 14,
-            paddingBottom: 10,
-          }}
-        >
-          Foods Eaten
-        </Text>
-
+        {/* Column header */}
+        <RowDivider />
         <View
           style={{
             flexDirection: "row",
-            alignItems: "center",
-            borderBottomWidth: 1,
-            borderBottomColor: "#3A3F4B",
-            paddingHorizontal: 14,
-            paddingBottom: 10,
+            justifyContent: "flex-end",
+            paddingHorizontal: 16,
+            paddingVertical: 10,
           }}
         >
-          <Text style={{ flex: 1, color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}>
-            Foods
-          </Text>
           <Text
-            style={{ width: 105, textAlign: "center", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-          >
-            Times{"\n"}Eaten
-          </Text>
-          <Text
-            style={{ width: 82, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
+            style={{
+              width: 90,
+              textAlign: "right",
+              color: TEXT_SECONDARY,
+              fontSize: 12,
+              fontWeight: "600",
+              textTransform: "uppercase",
+              letterSpacing: 0.4,
+            }}
           >
             Cals{"\n"}(kcal)
           </Text>
         </View>
 
+        {/* Meal rows */}
+        {MEAL_ROWS.map((meal) => (
+          <View key={meal.label}>
+            <RowDivider />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+              }}
+            >
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: meal.color,
+                  }}
+                />
+                <Text style={{ color: TEXT_PRIMARY, fontSize: 14 }}>
+                  {meal.label}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  width: 60,
+                  textAlign: "right",
+                  color: TEXT_SECONDARY,
+                  fontSize: 14,
+                }}
+              >
+                (0%)
+              </Text>
+              <Text
+                style={{
+                  width: 44,
+                  textAlign: "right",
+                  color: TEXT_PRIMARY,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                -
+              </Text>
+            </View>
+          </View>
+        ))}
+      </Card>
+
+      {/* Foods Eaten card */}
+      <Card>
+        <SectionTitle text="Foods Eaten" />
+        <RowDivider />
+
+        {/* Table header */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingHorizontal: 14,
-            paddingVertical: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
           }}
         >
-          <Text style={{ flex: 1, color: "#F3F4F6", fontSize: 22, fontWeight: "700" }}>
+          <Text style={{ flex: 1, color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
+            Foods
+          </Text>
+          <Text style={{ width: 90, textAlign: "center", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
+            Times{"\n"}Eaten
+          </Text>
+          <Text style={{ width: 72, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
+            Cals{"\n"}(kcal)
+          </Text>
+        </View>
+
+        <RowDivider />
+
+        {/* Total row */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+          }}
+        >
+          <Text style={{ flex: 1, color: TEXT_PRIMARY, fontSize: 15, fontWeight: "700" }}>
             Total
           </Text>
-          <Text style={{ width: 105, textAlign: "center", color: "#F3F4F6", fontSize: 25, fontWeight: "700" }}>
+          <Text style={{ width: 90, textAlign: "center", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             -
           </Text>
-          <Text style={{ width: 82, textAlign: "right", color: "#F3F4F6", fontSize: 25, fontWeight: "700" }}>
+          <Text style={{ width: 72, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             -
           </Text>
         </View>
-      </View>
+      </Card>
     </View>
   );
 }
 
+// ─── Macros Panel ─────────────────────────────────────────────────────────────
+
 function MacrosPanel() {
   return (
-    <View>
-      <View
-        style={{
-          backgroundColor: "#22262F",
-          borderWidth: 1,
-          borderColor: "#353A45",
-          borderRadius: 4,
-          marginBottom: 14,
-        }}
-      >
-        <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 }}>
-          <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "600", marginBottom: 12 }}>
+    <View style={{ gap: 12 }}>
+      {/* Macros chart card */}
+      <Card>
+        <View style={{ padding: 16 }}>
+          <Text style={{ color: TEXT_PRIMARY, fontSize: 16, fontWeight: "700", marginBottom: 14 }}>
             Macronutrients
           </Text>
-
           <ChartGrid />
           <DayLabels />
         </View>
 
+        {/* Column header */}
+        <RowDivider />
         <View
           style={{
-            borderTopWidth: 1,
-            borderTopColor: "#3A3F4B",
-            paddingHorizontal: 14,
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            paddingHorizontal: 16,
             paddingVertical: 10,
+            gap: 4,
           }}
         >
-          <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-            <Text
-              style={{
-                width: 82,
-                textAlign: "right",
-                color: "#B9BEC8",
-                fontSize: 15,
-                fontWeight: "600",
-                marginRight: 24,
-              }}
-            >
-              Total
-            </Text>
-            <Text
-              style={{
-                width: 72,
-                textAlign: "right",
-                color: "#B9BEC8",
-                fontSize: 15,
-                fontWeight: "600",
-              }}
-            >
-              Goal
-            </Text>
-          </View>
+          <Text style={{ width: 80, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, marginRight: 16 }}>
+            Total
+          </Text>
+          <Text style={{ width: 64, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
+            Goal
+          </Text>
         </View>
 
+        {/* Macro rows */}
         {MACRO_ROWS.map((macro) => (
-          <View
-            key={macro.label}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              borderTopWidth: 1,
-              borderTopColor: "#3A3F4B",
-              paddingHorizontal: 14,
-              paddingVertical: 14,
-            }}
-          >
-            <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
-              <View
-                style={{ width: 12, height: 12, backgroundColor: macro.color, marginRight: 10 }}
-              />
-              <Text style={{ color: "#66D46E", fontSize: 16 }}>{macro.label}</Text>
-            </View>
-            <Text
+          <View key={macro.label}>
+            <RowDivider />
+            <View
               style={{
-                width: 82,
-                textAlign: "right",
-                color: "#E5E7EB",
-                fontSize: 16,
-                marginRight: 24,
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 16,
+                paddingVertical: 14,
               }}
             >
-              0%
-            </Text>
-            <Text style={{ width: 72, textAlign: "right", color: "#E5E7EB", fontSize: 16 }}>
-              {macro.goal}
-            </Text>
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: macro.color,
+                  }}
+                />
+                <Text style={{ color: TEXT_PRIMARY, fontSize: 14 }}>
+                  {macro.label}
+                </Text>
+              </View>
+              <Text style={{ width: 80, textAlign: "right", color: TEXT_SECONDARY, fontSize: 14, marginRight: 16 }}>
+                0%
+              </Text>
+              <Text style={{ width: 64, textAlign: "right", color: TEXT_PRIMARY, fontSize: 14, fontWeight: "600" }}>
+                {macro.goal}
+              </Text>
+            </View>
           </View>
         ))}
-      </View>
+      </Card>
 
-      <View
-        style={{
-          backgroundColor: "#22262F",
-          borderWidth: 1,
-          borderColor: "#353A45",
-          borderRadius: 4,
-        }}
-      >
-        <Text
-          style={{
-            color: "#E5E7EB",
-            fontSize: 39,
-            fontWeight: "500",
-            paddingHorizontal: 14,
-            paddingTop: 14,
-            paddingBottom: 10,
-          }}
-        >
-          Foods Eaten
-        </Text>
+      {/* Foods Eaten card */}
+      <Card>
+        <SectionTitle text="Foods Eaten" />
+        <RowDivider />
 
+        {/* Table header */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            borderBottomWidth: 1,
-            borderBottomColor: "#3A3F4B",
-            paddingHorizontal: 14,
-            paddingBottom: 10,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
           }}
         >
-          <Text style={{ flex: 1, color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}>
+          <Text style={{ flex: 1, color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
             Foods
           </Text>
-          <Text
-            style={{ width: 80, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-          >
+          <Text style={{ width: 72, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
             Carbs{"\n"}(g)
           </Text>
-          <Text
-            style={{ width: 72, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-          >
+          <Text style={{ width: 64, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
             Fat{"\n"}(g)
           </Text>
-          <Text
-            style={{ width: 72, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-          >
+          <Text style={{ width: 64, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
             Prot{"\n"}(g)
           </Text>
         </View>
 
+        <RowDivider />
+
+        {/* Total row */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingHorizontal: 14,
-            paddingVertical: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 16,
           }}
         >
-          <Text style={{ flex: 1, color: "#F3F4F6", fontSize: 22, fontWeight: "700" }}>
+          <Text style={{ flex: 1, color: TEXT_PRIMARY, fontSize: 15, fontWeight: "700" }}>
             Total
           </Text>
-          <Text style={{ width: 80, textAlign: "right", color: "#F3F4F6", fontSize: 25, fontWeight: "700" }}>
+          <Text style={{ width: 72, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             -
           </Text>
-          <Text style={{ width: 72, textAlign: "right", color: "#F3F4F6", fontSize: 25, fontWeight: "700" }}>
+          <Text style={{ width: 64, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             -
           </Text>
-          <Text style={{ width: 72, textAlign: "right", color: "#F3F4F6", fontSize: 25, fontWeight: "700" }}>
+          <Text style={{ width: 64, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             -
           </Text>
         </View>
-      </View>
+      </Card>
     </View>
   );
 }
 
+// ─── Nutrients Panel ──────────────────────────────────────────────────────────
+
 function NutrientsPanel() {
   return (
-    <View
-      style={{
-        backgroundColor: "#22262F",
-        borderWidth: 1,
-        borderColor: "#353A45",
-        borderRadius: 4,
-      }}
-    >
-      <Text
-        style={{
-          color: "#E5E7EB",
-          fontSize: 43,
-          fontWeight: "500",
-          paddingHorizontal: 14,
-          paddingTop: 14,
-          paddingBottom: 10,
-        }}
-      >
-        Nutrients
-      </Text>
+    <Card>
+      <SectionTitle text="Nutrients" />
+      <RowDivider />
 
+      {/* Table header */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 1,
-          borderBottomColor: "#3A3F4B",
-          paddingHorizontal: 14,
-          paddingBottom: 10,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
         }}
       >
-        <Text style={{ flex: 1, color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}>
+        <Text style={{ flex: 1, color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
           Nutrient
         </Text>
-        <Text
-          style={{ width: 70, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-        >
+        <Text style={{ width: 58, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
           Total
         </Text>
-        <Text
-          style={{ width: 80, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-        >
+        <Text style={{ width: 66, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
           Goal
         </Text>
-        <Text
-          style={{ width: 70, textAlign: "right", color: "#D1D5DB", fontSize: 21, fontWeight: "600" }}
-        >
-          [
-          <Text style={{ color: "#EF4444" }}>+</Text>
-          /
-          <Text style={{ color: "#60A5FA" }}>-</Text>
-          ]
-        </Text>
+        {/* Delta header: [+/-] */}
+        <View style={{ width: 58, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 1 }}>
+          <Text style={{ color: TEXT_SECONDARY, fontSize: 11, fontWeight: "700" }}>[</Text>
+          <Text style={{ color: "#EF4444", fontSize: 11, fontWeight: "700" }}>+</Text>
+          <Text style={{ color: TEXT_SECONDARY, fontSize: 11, fontWeight: "700" }}>/</Text>
+          <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "700" }}>-</Text>
+          <Text style={{ color: TEXT_SECONDARY, fontSize: 11, fontWeight: "700" }}>]</Text>
+        </View>
       </View>
 
-      {NUTRIENT_ROWS.map((nutrient) => (
-        <View
-          key={nutrient.label}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            borderBottomWidth: 1,
-            borderBottomColor: "#3A3F4B",
-            paddingHorizontal: 14,
-            paddingVertical: 14,
-          }}
-        >
-          <Text
+      {/* Nutrient rows */}
+      {NUTRIENT_ROWS.map((nutrient, index) => (
+        <View key={nutrient.label}>
+          <RowDivider />
+          <View
             style={{
-              flex: 1,
-              color: "#66D46E",
-              fontSize: 16,
-              lineHeight: 23,
-              marginRight: 10,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 13,
+              backgroundColor: index % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
             }}
           >
-            {nutrient.label}
-          </Text>
-          <Text style={{ width: 70, textAlign: "right", color: "#E5E7EB", fontSize: 17 }}>
-            {nutrient.total}
-          </Text>
-          <Text style={{ width: 80, textAlign: "right", color: "#E5E7EB", fontSize: 17 }}>
-            {nutrient.goal}
-          </Text>
-          <Text style={{ width: 70, textAlign: "right", color: "#E5E7EB", fontSize: 17 }}>
-            {nutrient.delta}
-          </Text>
+            <Text
+              style={{
+                flex: 1,
+                color: TEXT_PRIMARY,
+                fontSize: 13,
+                lineHeight: 18,
+                marginRight: 8,
+              }}
+            >
+              {nutrient.label}
+            </Text>
+            <Text style={{ width: 58, textAlign: "right", color: TEXT_SECONDARY, fontSize: 13 }}>
+              {nutrient.total}
+            </Text>
+            <Text style={{ width: 66, textAlign: "right", color: TEXT_SECONDARY, fontSize: 13 }}>
+              {nutrient.goal}
+            </Text>
+            <Text style={{ width: 58, textAlign: "right", color: TEXT_SECONDARY, fontSize: 13 }}>
+              {nutrient.delta}
+            </Text>
+          </View>
         </View>
       ))}
-    </View>
+    </Card>
   );
 }
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ReportsScreen() {
   const [activeTab, setActiveTab] = useState<ReportTabKey>("nutrients");
@@ -705,46 +734,52 @@ export default function ReportsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0F19" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={["top"]}>
       <View style={{ flex: 1 }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 10, paddingBottom: 116 }}
+          contentContainerStyle={{
+            paddingHorizontal: 12,
+            paddingTop: 10,
+            paddingBottom: 116,
+          }}
         >
           <ReportsHeader />
           <WeekPicker />
 
+          {/* ── Tab bar ── */}
           <View
             style={{
               flexDirection: "row",
-              borderBottomWidth: 1,
-              borderBottomColor: "#3F444F",
-              marginHorizontal: -12,
-              paddingHorizontal: 12,
-              marginBottom: 12,
+              backgroundColor: CARD,
+              borderRadius: 12,
+              padding: 4,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: BORDER,
             }}
           >
             {REPORT_TABS.map((tab) => {
               const isActive = tab.key === activeTab;
-
               return (
                 <TouchableOpacity
                   key={tab.key}
-                  activeOpacity={0.85}
+                  activeOpacity={0.8}
                   onPress={() => onTabPress(tab.key)}
                   style={{
                     flex: 1,
                     alignItems: "center",
-                    borderBottomWidth: 4,
-                    borderBottomColor: isActive ? "#EAF11C" : "transparent",
-                    paddingVertical: 12,
+                    paddingVertical: 10,
+                    borderRadius: 9,
+                    backgroundColor: isActive ? ACCENT : "transparent",
                   }}
                 >
                   <Text
                     style={{
-                      color: isActive ? "#EAF11C" : "#E5E7EB",
-                      fontSize: 17,
+                      color: isActive ? "#fff" : TEXT_SECONDARY,
+                      fontSize: 12,
                       fontWeight: "700",
+                      letterSpacing: 0.5,
                     }}
                   >
                     {tab.label}
@@ -754,6 +789,7 @@ export default function ReportsScreen() {
             })}
           </View>
 
+          {/* ── Pager ── */}
           <ScrollView
             ref={pagerRef}
             horizontal
@@ -765,11 +801,9 @@ export default function ReportsScreen() {
             <View style={{ width: pageWidth }}>
               <CaloriesPanel />
             </View>
-
             <View style={{ width: pageWidth }}>
               <MacrosPanel />
             </View>
-
             <View style={{ width: pageWidth }}>
               <NutrientsPanel />
             </View>

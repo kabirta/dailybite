@@ -1,8 +1,16 @@
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppBottomNav } from "../components/AppBottomNav";
+
+// ─── Data (unchanged) ────────────────────────────────────────────────────────
 
 const FEATURES = [
   "Personalized AI coach",
@@ -10,126 +18,319 @@ const FEATURES = [
   "Advanced reports",
 ];
 
-const PLANS = [
-  { amount: "Rs 299", period: "/month" },
-  
-];
+const PLANS = [{ amount: "Rs 299", period: "/month" }];
+
+// ─── Feature metadata ─────────────────────────────────────────────────────────
+
+const FEATURE_META: Record<
+  string,
+  {
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    color: string;
+    bg: string;
+    desc: string;
+  }
+> = {
+  "Personalized AI coach": {
+    icon: "hardware-chip-outline",
+    color: "#A78BFA",
+    bg: "rgba(167,139,250,0.12)",
+    desc: "Get real-time guidance tailored to your body and goals",
+  },
+  "1-on-1 nutritionist chat": {
+    icon: "chatbubbles-outline",
+    color: "#38BDF8",
+    bg: "rgba(56,189,248,0.12)",
+    desc: "Chat directly with a certified nutritionist anytime",
+  },
+  "Advanced reports": {
+    icon: "bar-chart-outline",
+    color: "#4ADE80",
+    bg: "rgba(74,222,128,0.12)",
+    desc: "Deep insights into macros, trends, and weekly progress",
+  },
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function FeatureRow({ label }: { label: string }) {
+  const meta = FEATURE_META[label];
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#0D1526",
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#1A2744",
+        gap: 14,
+      }}
+    >
+      {/* Icon badge */}
+      <View
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 12,
+          backgroundColor: meta.bg,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Ionicons name={meta.icon} size={22} color={meta.color} />
+      </View>
+
+      {/* Text */}
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: "#F1F5F9", fontSize: 14, fontWeight: "700" }}>
+          {label}
+        </Text>
+        <Text
+          style={{ color: "#6B7280", fontSize: 12, marginTop: 2, lineHeight: 17 }}
+        >
+          {meta.desc}
+        </Text>
+      </View>
+
+      <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function PremiumScreen() {
+  const [selected, setSelected] = useState(0);
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F3F4F6" }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#030A23" }}
+      edges={["top"]}
+    >
       <View style={{ flex: 1 }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            flexGrow: 1,
-            justifyContent: "center",
-            paddingHorizontal: 16,
-            paddingTop: 20,
-            paddingBottom: 16,
-          }}
+          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
         >
-          <View
-            style={{
-              alignSelf: "center",
-              width: "100%",
-              maxWidth: 420,
-              borderRadius: 36,
-              backgroundColor: "#EFF1F3",
-              paddingHorizontal: 18,
-              paddingVertical: 22,
-            }}
-          >
-            <Text
-              style={{
-                textAlign: "center",
-                color: "#1F2937",
-                fontSize: 32,
-                fontWeight: "700",
-                marginBottom: 20,
-              }}
-            >
-              Upgrade to Premium
-            </Text>
-
-            <View style={{ marginBottom: 20 }}>
-              {FEATURES.map((feature) => (
-                <View
-                  key={feature}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginBottom: 13,
-                  }}
-                >
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={26}
-                    color="#25B367"
-                  />
-                  <Text
-                    style={{
-                      marginLeft: 12,
-                      color: "#1F2937",
-                      fontSize: 26,
-                      fontWeight: "500",
-                      flexShrink: 1,
-                    }}
-                  >
-                    {feature}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
+          {/* ── Hero ── */}
+          <View style={{ alignItems: "center", paddingTop: 28, paddingBottom: 24 }}>
+            {/* Crown glow ring */}
             <View
               style={{
-                backgroundColor: "#E6E8EB",
-                borderRadius: 16,
-                paddingHorizontal: 16,
-                paddingVertical: 18,
-              }}
-            >
-              {PLANS.map((plan, index) => (
-                <View key={plan.amount} style={{ marginBottom: index === PLANS.length - 1 ? 0 : 24 }}>
-                  <Text
-                    style={{
-                      color: "#111827",
-                      fontSize: 48,
-                      fontWeight: "700",
-                    }}
-                  >
-                    {plan.amount}
-                    <Text
-                      style={{
-                        fontSize: 30,
-                        fontWeight: "500",
-                        color: "#111827",
-                      }}
-                    >
-                      {plan.period}
-                    </Text>
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={{
-                marginTop: 24,
-                height: 56,
-                borderRadius: 14,
-                backgroundColor: "#F1A143",
+                width: 88,
+                height: 88,
+                borderRadius: 44,
+                backgroundColor: "rgba(234,179,8,0.10)",
+                borderWidth: 1.5,
+                borderColor: "rgba(234,179,8,0.28)",
                 alignItems: "center",
                 justifyContent: "center",
+                marginBottom: 16,
               }}
             >
-              <Text style={{ color: "#FFF7EB", fontSize: 33, fontWeight: "700" }}>
-                Subscribe
+              <Text style={{ fontSize: 42 }}>👑</Text>
+            </View>
+
+            {/* Premium badge */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                backgroundColor: "rgba(234,179,8,0.12)",
+                borderRadius: 20,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderWidth: 1,
+                borderColor: "rgba(234,179,8,0.30)",
+                marginBottom: 14,
+              }}
+            >
+              <Ionicons name="star" size={12} color="#EAB308" />
+              <Text
+                style={{ color: "#EAB308", fontSize: 12, fontWeight: "700", letterSpacing: 0.5 }}
+              >
+                HEALTHBANGLA PREMIUM
               </Text>
-            </TouchableOpacity>
+            </View>
+
+            <Text
+              style={{
+                color: "#F1F5F9",
+                fontSize: 28,
+                fontWeight: "800",
+                textAlign: "center",
+                lineHeight: 34,
+                marginBottom: 8,
+              }}
+            >
+              Upgrade to{"\n"}Premium
+            </Text>
+            <Text
+              style={{
+                color: "#6B7280",
+                fontSize: 14,
+                textAlign: "center",
+                lineHeight: 20,
+                maxWidth: 280,
+              }}
+            >
+              Unlock the full power of your health journey with expert tools and AI coaching.
+            </Text>
           </View>
+
+          {/* ── Features ── */}
+          <View style={{ marginBottom: 24 }}>
+            {FEATURES.map((f) => (
+              <FeatureRow key={f} label={f} />
+            ))}
+          </View>
+
+          {/* ── Pricing card ── */}
+          {PLANS.map((plan, index) => (
+            <TouchableOpacity
+              key={plan.amount}
+              activeOpacity={0.85}
+              onPress={() => setSelected(index)}
+              style={{
+                backgroundColor: "#0D1526",
+                borderRadius: 18,
+                borderWidth: 2,
+                borderColor: selected === index ? "#EAB308" : "#1A2744",
+                padding: 18,
+                marginBottom: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              {/* Left */}
+              <View style={{ gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text
+                    style={{ color: "#F1F5F9", fontSize: 26, fontWeight: "800" }}
+                  >
+                    {plan.amount}
+                  </Text>
+                  <Text style={{ color: "#9CA3AF", fontSize: 15, fontWeight: "500" }}>
+                    {plan.period}
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: "rgba(234,179,8,0.12)",
+                    borderRadius: 8,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <Text
+                    style={{ color: "#EAB308", fontSize: 11, fontWeight: "700" }}
+                  >
+                    Most Popular
+                  </Text>
+                </View>
+              </View>
+
+              {/* Radio */}
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: selected === index ? "#EAB308" : "#374151",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {selected === index && (
+                  <View
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
+                      backgroundColor: "#EAB308",
+                    }}
+                  />
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          {/* ── What's included strip ── */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              backgroundColor: "#0D1526",
+              borderRadius: 14,
+              paddingVertical: 14,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: "#1A2744",
+            }}
+          >
+            {[
+              { emoji: "🚫", label: "No ads" },
+              { emoji: "🔒", label: "Secure" },
+              { emoji: "↩️", label: "Cancel anytime" },
+            ].map((item) => (
+              <View key={item.label} style={{ alignItems: "center", gap: 5 }}>
+                <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
+                <Text style={{ color: "#9CA3AF", fontSize: 11, fontWeight: "600" }}>
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Subscribe CTA ── */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={{
+              height: 56,
+              borderRadius: 16,
+              backgroundColor: "#EAB308",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            <Ionicons name="star" size={18} color="#1A0F00" />
+            <Text
+              style={{ color: "#1A0F00", fontSize: 17, fontWeight: "800" }}
+            >
+              Subscribe Now
+            </Text>
+          </TouchableOpacity>
+
+          {/* ── Restore + Terms ── */}
+          <TouchableOpacity style={{ alignItems: "center", marginBottom: 6 }}>
+            <Text style={{ color: "#6B7280", fontSize: 13 }}>
+              Restore Purchase
+            </Text>
+          </TouchableOpacity>
+          <Text
+            style={{
+              color: "#374151",
+              fontSize: 11,
+              textAlign: "center",
+              lineHeight: 16,
+            }}
+          >
+            By subscribing you agree to our{" "}
+            <Text style={{ color: "#6B7280" }}>Terms of Service</Text> and{" "}
+            <Text style={{ color: "#6B7280" }}>Privacy Policy</Text>.{"\n"}
+            Subscription auto-renews unless cancelled.
+          </Text>
         </ScrollView>
 
         <AppBottomNav />

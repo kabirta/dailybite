@@ -20,6 +20,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.kabir.healthbangla",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -28,7 +30,21 @@
     },
     "plugins": [
       "expo-router",
-      "expo-notifications"
-    ]
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow HealthBangla to access your photos to set a profile picture.",
+          "cameraPermission": "Allow HealthBangla to use your camera to take a profile photo."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8bb06112-baa7-4234-bb48-8057d31e1c98"
+      }
+    },
+    "owner": "kabir_2512"
   }
 }
