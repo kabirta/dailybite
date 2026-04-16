@@ -1,2 +1,2 @@
-export { default } from "../screens/DiaryHomeScreen";
+export { default } from "../components/WelcomeScreen";
 

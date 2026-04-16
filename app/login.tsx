@@ -1,18 +1,22 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { provider } = useLocalSearchParams<{ provider?: string }>();
+  const isGoogleSignIn = provider === "google";
 
   return (
     <SafeAreaView className="flex-1 bg-[#030A23]">
       <View className="flex-1 items-center justify-center px-7">
         <Text className="text-center text-[48px] font-extrabold leading-[58px] text-white">
-          Login Screen
+          {isGoogleSignIn ? "Google Sign-In" : "Login Screen"}
         </Text>
         <Text className="mt-4 text-center text-[26px] leading-9 text-white/85">
-          Your onboarding answers are ready. Connect your auth flow here.
+          {isGoogleSignIn
+            ? "Your Google sign-in flow can continue from here."
+            : "Your onboarding answers are ready. Connect your auth flow here."}
         </Text>
 
         <Pressable

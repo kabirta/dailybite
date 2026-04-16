@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActionSheetIOS,
+  ActivityIndicator,
   Alert,
   Image,
   Platform,
+  Pressable,
   ScrollView,
+  StyleSheet,
   Switch,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,22 +17,28 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { onAuthStateChanged, type User } from "firebase/auth";
+
+import { auth } from "../src/config/firebase";
+import { signOutUser } from "../src/services/authService";
 
 const AVATAR_STORAGE_KEY = "@healthbangla_avatar_uri";
+const CARD = "#0D1526";
+const CARD_ALT = "#111B31";
+const BG = "#030A23";
+const TEXT = "#F8FAFC";
+const MUTED = "#93A4BF";
+const BORDER = "rgba(255,255,255,0.08)";
+const ACCENT = "#2ED972";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const USER = {
-  name: "Alex Johnson",
-  email: "alex@example.com",
-  joinedDate: "March 2025",
+const PROFILE_PLACEHOLDERS = {
   streak: 7,
   foodsLogged: 42,
   daysActive: 14,
-  age: 25,
-  height: "175 cm",
-  weight: "72 kg",
-  goal: "Lose Weight",
+  age: "Not set",
+  height: "Not set",
+  weight: "Not set",
+  goal: "Stay Healthy",
   calorieGoal: 3000,
   waterGoal: 8,
   caloriesConsumed: 0,
@@ -38,264 +46,332 @@ const USER = {
   exerciseMin: 0,
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StatChip({
-  emoji,
-  value,
-  label,
-}: {
-  emoji: string;
-  value: string | number;
-  label: string;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        backgroundColor: "#0D1526",
-        borderRadius: 14,
-        paddingVertical: 14,
-        gap: 4,
-      }}
-    >
-      <Text style={{ fontSize: 22 }}>{emoji}</Text>
-      <Text style={{ color: "#F1F5F9", fontWeight: "800", fontSize: 18 }}>
-        {value}
-      </Text>
-      <Text style={{ color: "#6B7280", fontSize: 11 }}>{label}</Text>
-    </View>
-  );
-}
-
-function InfoCell({
-  label,
-  value,
-  emoji,
-}: {
-  label: string;
-  value: string;
-  emoji: string;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#0D1526",
-        borderRadius: 14,
-        padding: 14,
-        gap: 6,
-      }}
-    >
-      <Text
-        style={{
-          color: "#6B7280",
-          fontSize: 10,
-          fontWeight: "700",
-          textTransform: "uppercase",
-          letterSpacing: 0.6,
-        }}
-      >
-        {label}
-      </Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-        <Text style={{ fontSize: 18 }}>{emoji}</Text>
-        <Text style={{ color: "#F1F5F9", fontWeight: "700", fontSize: 15 }}>
-          {value}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function ProgressBar({
-  value,
-  total,
-  color,
-}: {
-  value: number;
-  total: number;
-  color: string;
-}) {
-  const pct = total > 0 ? Math.min((value / total) * 100, 100) : 0;
-  return (
-    <View
-      style={{
-        height: 5,
-        backgroundColor: "#1A2744",
-        borderRadius: 3,
-        overflow: "hidden",
-        marginTop: 7,
-      }}
-    >
-      <View
-        style={{
-          width: `${pct}%`,
-          height: "100%",
-          backgroundColor: color,
-          borderRadius: 3,
-        }}
-      />
-    </View>
-  );
-}
-
 type SettingRowProps = {
   icon: React.ComponentProps<typeof Ionicons>["name"];
-  iconColor: string;
-  iconBg: string;
   label: string;
+  description?: string;
   value?: string;
+  tint: string;
   rightNode?: React.ReactNode;
-  showChevron?: boolean;
   danger?: boolean;
   onPress?: () => void;
 };
 
-function SettingRow({
+function getDisplayName(user: User | null) {
+  const name = user?.displayName?.trim();
+
+  if (name) {
+    return name;
+  }
+
+  if (user?.email) {
+    return user.email.split("@")[0];
+  }
+
+  return "Profile";
+}
+
+function getEmail(user: User | null) {
+  return user?.email ?? "No email linked";
+}
+
+function getJoinedDate(user: User | null) {
+  const createdAt = user?.metadata?.creationTime;
+
+  if (!createdAt) {
+    return "Recently";
+  }
+
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Recently";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function getInitials(name: string) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return initials || "?";
+}
+
+function getProviderLabel(user: User | null) {
+  const providerId = user?.providerData?.[0]?.providerId ?? "";
+
+  if (providerId.includes("google")) {
+    return "Google";
+  }
+
+  if (providerId.includes("password")) {
+    return "Email";
+  }
+
+  return "Firebase";
+}
+
+function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+    </View>
+  );
+}
+
+function MetricCard({
   icon,
-  iconColor,
-  iconBg,
+  value,
+  label,
+  tint,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  value: string | number;
+  label: string;
+  tint: string;
+}) {
+  return (
+    <View style={styles.metricCard}>
+      <View style={[styles.metricIconWrap, { backgroundColor: `${tint}20` }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function PreferenceTile({
+  icon,
   label,
   value,
+  tint,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: string;
+  tint: string;
+}) {
+  return (
+    <View style={styles.preferenceTile}>
+      <View style={[styles.preferenceTileIcon, { backgroundColor: `${tint}20` }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <Text style={styles.preferenceTileLabel}>{label}</Text>
+      <Text style={styles.preferenceTileValue}>{value}</Text>
+    </View>
+  );
+}
+
+function DetailCard({
+  label,
+  value,
+  icon,
+  tint,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  tint: string;
+}) {
+  return (
+    <View style={styles.detailCard}>
+      <View style={[styles.detailIconWrap, { backgroundColor: `${tint}20` }]}>
+        <Ionicons name={icon} size={16} color={tint} />
+      </View>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  );
+}
+
+function ProgressCard({
+  label,
+  value,
+  total,
+  unit,
+  icon,
+  tint,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  unit: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  tint: string;
+}) {
+  const percentage = total > 0 ? Math.min((value / total) * 100, 100) : 0;
+
+  return (
+    <View style={styles.progressCard}>
+      <View style={styles.progressTopRow}>
+        <View style={styles.progressLabelRow}>
+          <View style={[styles.progressIconWrap, { backgroundColor: `${tint}20` }]}>
+            <Ionicons name={icon} size={16} color={tint} />
+          </View>
+          <Text style={styles.progressLabel}>{label}</Text>
+        </View>
+        <Text style={styles.progressNumbers}>
+          {value} / {total} {unit}
+        </Text>
+      </View>
+      <View style={styles.progressTrack}>
+        <View
+          style={[
+            styles.progressFill,
+            {
+              width: `${percentage}%`,
+              backgroundColor: tint,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+function SettingRow({
+  icon,
+  label,
+  description,
+  value,
+  tint,
   rightNode,
-  showChevron = true,
   danger = false,
   onPress,
 }: SettingRowProps) {
   return (
-    <TouchableOpacity
+    <Pressable
+      accessibilityRole="button"
       onPress={onPress}
-      activeOpacity={0.7}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 13,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: "#080D1A",
-        gap: 12,
-      }}
+      style={({ pressed }) => [
+        styles.settingRow,
+        pressed && onPress ? styles.settingRowPressed : null,
+      ]}
     >
-      <View
-        style={{
-          width: 35,
-          height: 35,
-          borderRadius: 9,
-          backgroundColor: iconBg,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name={icon} size={18} color={iconColor} />
+      <View style={[styles.settingIconWrap, { backgroundColor: `${tint}20` }]}>
+        <Ionicons name={icon} size={18} color={danger ? "#F87171" : tint} />
       </View>
 
-      <Text
-        style={{
-          flex: 1,
-          color: danger ? "#EF4444" : "#F1F5F9",
-          fontSize: 14,
-          fontWeight: "500",
-        }}
-      >
-        {label}
-      </Text>
+      <View style={styles.settingCopy}>
+        <Text style={[styles.settingLabel, danger ? styles.settingDangerLabel : null]}>
+          {label}
+        </Text>
+        {description ? <Text style={styles.settingDescription}>{description}</Text> : null}
+        {value ? <Text style={styles.settingValue}>{value}</Text> : null}
+      </View>
 
-      {rightNode ?? (
-        <>
-          {value ? (
-            <Text style={{ color: "#6B7280", fontSize: 13 }}>{value}</Text>
-          ) : null}
-          {showChevron && (
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={danger ? "#EF4444" : "#374151"}
-            />
-          )}
-        </>
-      )}
-    </TouchableOpacity>
+      {rightNode ?? <Ionicons name="chevron-forward" size={16} color="#3F516E" />}
+    </Pressable>
   );
 }
-
-function SectionLabel({ text }: { text: string }) {
-  return (
-    <Text
-      style={{
-        color: "#9CA3AF",
-        fontSize: 11,
-        fontWeight: "700",
-        letterSpacing: 0.8,
-        textTransform: "uppercase",
-        marginHorizontal: 16,
-        marginBottom: 10,
-        marginTop: 22,
-      }}
-    >
-      {text}
-    </Text>
-  );
-}
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  // ── Load persisted avatar on mount ──────────────────────────────────────
+  const displayName = getDisplayName(currentUser);
+  const email = getEmail(currentUser);
+  const joinedDate = getJoinedDate(currentUser);
+  const resolvedAvatarUri = avatarUri ?? currentUser?.photoURL ?? null;
+  const providerLabel = getProviderLabel(currentUser);
+
+  const profileData = useMemo(
+    () => ({
+      name: displayName,
+      email,
+      joinedDate,
+      ...PROFILE_PLACEHOLDERS,
+    }),
+    [displayName, email, joinedDate]
+  );
+
   useEffect(() => {
     AsyncStorage.getItem(AVATAR_STORAGE_KEY).then((uri) => {
-      if (uri) setAvatarUri(uri);
+      if (uri) {
+        setAvatarUri(uri);
+      }
     });
   }, []);
 
-  // ── Save avatar URI and update state ─────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setCurrentUser(firebaseUser);
+
+      if (!firebaseUser) {
+        router.replace("/");
+      }
+    });
+
+    return unsubscribe;
+  }, [router]);
+
   const saveAvatar = async (uri: string) => {
     setAvatarUri(uri);
     await AsyncStorage.setItem(AVATAR_STORAGE_KEY, uri);
   };
 
-  // ── Launch camera ─────────────────────────────────────────────────────────
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
     if (status !== "granted") {
       Alert.alert("Permission required", "Camera access is needed to take a photo.");
       return;
     }
+
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
     });
+
     if (!result.canceled && result.assets[0]?.uri) {
       await saveAvatar(result.assets[0].uri);
     }
   };
 
-  // ── Launch gallery ────────────────────────────────────────────────────────
   const openGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (status !== "granted") {
-      Alert.alert("Permission required", "Photo library access is needed to choose a photo.");
+      Alert.alert(
+        "Permission required",
+        "Photo library access is needed to choose a photo."
+      );
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
     });
+
     if (!result.canceled && result.assets[0]?.uri) {
       await saveAvatar(result.assets[0].uri);
     }
   };
 
-  // ── Action sheet (iOS native / Alert on Android) ─────────────────────────
+  const clearCustomAvatar = async () => {
+    setAvatarUri(null);
+    await AsyncStorage.removeItem(AVATAR_STORAGE_KEY);
+  };
+
   const handleAvatarPress = () => {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -303,407 +379,829 @@ export default function ProfileScreen() {
           options: ["Cancel", "Take Photo", "Choose from Library", "Remove Photo"],
           cancelButtonIndex: 0,
           destructiveButtonIndex: 3,
-          title: "Change Profile Photo",
+          title: "Update profile photo",
         },
         (index) => {
-          if (index === 1) openCamera();
-          else if (index === 2) openGallery();
-          else if (index === 3) {
-            setAvatarUri(null);
-            AsyncStorage.removeItem(AVATAR_STORAGE_KEY);
+          if (index === 1) {
+            void openCamera();
+          } else if (index === 2) {
+            void openGallery();
+          } else if (index === 3) {
+            void clearCustomAvatar();
           }
         }
       );
-    } else {
-      Alert.alert("Change Profile Photo", undefined, [
-        { text: "Take Photo", onPress: openCamera },
-        { text: "Choose from Library", onPress: openGallery },
-        ...(avatarUri
-          ? [{
+      return;
+    }
+
+    Alert.alert("Update profile photo", undefined, [
+      { text: "Take Photo", onPress: () => void openCamera() },
+      { text: "Choose from Library", onPress: () => void openGallery() },
+      ...(avatarUri
+        ? [
+            {
               text: "Remove Photo",
               style: "destructive" as const,
-              onPress: () => {
-                setAvatarUri(null);
-                AsyncStorage.removeItem(AVATAR_STORAGE_KEY);
-              },
-            }]
-          : []),
-        { text: "Cancel", style: "cancel" },
-      ]);
+              onPress: () => void clearCustomAvatar(),
+            },
+          ]
+        : []),
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleSignOut = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    try {
+      setIsSigningOut(true);
+      await signOutUser();
+      router.replace("/");
+    } catch (error) {
+      Alert.alert(
+        "Sign Out Failed",
+        error instanceof Error ? error.message : "Unable to sign out right now."
+      );
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#030A23" }}
-      edges={["top"]}
-    >
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 48 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Top bar ── */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-            paddingVertical: 13,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="arrow-back" size={24} color="#E2E8F0" />
-          </TouchableOpacity>
-          <Text
-            style={{ color: "#F1F5F9", fontWeight: "700", fontSize: 17 }}
-          >
-            Profile
-          </Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="create-outline" size={23} color="#E2E8F0" />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Avatar hero ── */}
-        <View
-          style={{
-            alignItems: "center",
-            paddingTop: 16,
-            paddingBottom: 24,
-          }}
-        >
-          {/* Avatar + camera badge */}
-          <TouchableOpacity
-            onPress={handleAvatarPress}
-            activeOpacity={0.85}
-            style={{ marginBottom: 14 }}
-          >
-            <View
-              style={{
-                width: 92,
-                height: 92,
-                borderRadius: 46,
-                backgroundColor: "#1E2A45",
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 2.5,
-                borderColor: "#22C55E",
-                overflow: "hidden",
-              }}
+        <View style={styles.heroShell}>
+          <View style={styles.heroGlow} />
+          <View style={styles.topBar}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.back()}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
             >
-              {avatarUri ? (
-                <Image
-                  source={{ uri: avatarUri }}
-                  style={{ width: 92, height: 92, borderRadius: 46 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Text style={{ fontSize: 48 }}>🧑</Text>
-              )}
+              <Ionicons name="arrow-back" size={20} color={TEXT} />
+            </Pressable>
+
+            <Text style={styles.topBarTitle}>Profile</Text>
+
+            <Pressable style={styles.iconButton}>
+              <Ionicons name="create-outline" size={20} color="#C7D2E5" />
+            </Pressable>
+          </View>
+
+          <View style={styles.heroCard}>
+            <View style={styles.heroPatternOne} />
+            <View style={styles.heroPatternTwo} />
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleAvatarPress}
+              style={({ pressed }) => [
+                styles.avatarButton,
+                pressed ? { opacity: 0.92 } : null,
+              ]}
+            >
+              <View style={styles.avatarRing}>
+                <View style={styles.avatarCore}>
+                  {resolvedAvatarUri ? (
+                    <Image source={{ uri: resolvedAvatarUri }} style={styles.avatarImage} />
+                  ) : (
+                    <Text style={styles.avatarInitials}>{getInitials(displayName)}</Text>
+                  )}
+                </View>
+              </View>
+              <View style={styles.avatarBadge}>
+                <Ionicons name="camera" size={14} color="#031322" />
+              </View>
+            </Pressable>
+
+            <Text style={styles.heroName}>{profileData.name}</Text>
+            <Text style={styles.heroEmail}>{profileData.email}</Text>
+
+            <View style={styles.heroMetaRow}>
+              <View style={styles.pill}>
+                <Ionicons name="flash" size={12} color={ACCENT} />
+                <Text style={styles.pillText}>Firebase auth</Text>
+              </View>
+              <View style={styles.pill}>
+                <Ionicons name="time-outline" size={12} color="#F8C44F" />
+                <Text style={styles.pillText}>Member since {profileData.joinedDate}</Text>
+              </View>
             </View>
 
-            {/* Camera badge */}
-            <View
-              style={{
-                position: "absolute",
-                bottom: 1,
-                right: 1,
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: "#22C55E",
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 2,
-                borderColor: "#030A23",
-              }}
-            >
-              <Ionicons name="camera" size={13} color="#fff" />
+            <View style={styles.metricsRow}>
+              <MetricCard
+                icon="flame-outline"
+                value={profileData.streak}
+                label="Streak"
+                tint="#F97316"
+              />
+              <MetricCard
+                icon="restaurant-outline"
+                value={profileData.foodsLogged}
+                label="Meals logged"
+                tint="#38BDF8"
+              />
+              <MetricCard
+                icon="calendar-outline"
+                value={profileData.daysActive}
+                label="Active days"
+                tint={ACCENT}
+              />
             </View>
-          </TouchableOpacity>
-
-          <Text
-            style={{ color: "#F1F5F9", fontWeight: "800", fontSize: 21 }}
-          >
-            {USER.name}
-          </Text>
-          <Text
-            style={{ color: "#6B7280", fontSize: 13, marginTop: 3 }}
-          >
-            {USER.email}
-          </Text>
-
-          {/* Plan badge */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 5,
-              marginTop: 11,
-              backgroundColor: "rgba(234,179,8,0.10)",
-              borderRadius: 20,
-              paddingHorizontal: 13,
-              paddingVertical: 5,
-              borderWidth: 1,
-              borderColor: "rgba(234,179,8,0.28)",
-            }}
-          >
-            <Ionicons name="star" size={12} color="#EAB308" />
-            <Text
-              style={{ color: "#EAB308", fontSize: 12, fontWeight: "600" }}
-            >
-              Free Plan · Member since {USER.joinedDate}
-            </Text>
           </View>
         </View>
 
-        {/* ── Stats row ── */}
-        <View
-          style={{
-            flexDirection: "row",
-            marginHorizontal: 16,
-            gap: 8,
-          }}
-        >
-          <StatChip emoji="🔥" value={USER.streak} label="Day Streak" />
-          <StatChip emoji="📊" value={USER.foodsLogged} label="Foods Logged" />
-          <StatChip emoji="📅" value={USER.daysActive} label="Days Active" />
+        <SectionTitle
+          title="Body Snapshot"
+          subtitle="These can be connected to onboarding or saved profile fields next."
+        />
+        <View style={styles.grid}>
+          <DetailCard label="Age" value={profileData.age} icon="time-outline" tint="#F97316" />
+          <DetailCard
+            label="Height"
+            value={profileData.height}
+            icon="resize-outline"
+            tint="#38BDF8"
+          />
+          <DetailCard
+            label="Weight"
+            value={profileData.weight}
+            icon="barbell-outline"
+            tint="#A78BFA"
+          />
+          <DetailCard
+            label="Goal"
+            value={profileData.goal}
+            icon="flag-outline"
+            tint={ACCENT}
+          />
         </View>
 
-        {/* ── Body info ── */}
-        <SectionLabel text="Body Info" />
-        <View
-          style={{ flexDirection: "row", marginHorizontal: 16, gap: 8, marginBottom: 8 }}
-        >
-          <InfoCell label="Age" value={`${USER.age} yrs`} emoji="🎂" />
-          <InfoCell label="Height" value={USER.height} emoji="📏" />
-        </View>
-        <View style={{ flexDirection: "row", marginHorizontal: 16, gap: 8 }}>
-          <InfoCell label="Weight" value={USER.weight} emoji="⚖️" />
-          <InfoCell label="Goal" value={USER.goal} emoji="🎯" />
-        </View>
-
-        {/* ── Today's progress ── */}
-        <SectionLabel text="Today's Progress" />
-        <View
-          style={{
-            marginHorizontal: 16,
-            backgroundColor: "#0D1526",
-            borderRadius: 16,
-            padding: 16,
-            gap: 16,
-          }}
-        >
-          {/* Calories */}
-          <View>
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
-              <Text
-                style={{ color: "#F1F5F9", fontSize: 13, fontWeight: "500" }}
-              >
-                🔥 Calories
-              </Text>
-              <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                {USER.caloriesConsumed} / {USER.calorieGoal} kcal
-              </Text>
-            </View>
-            <ProgressBar
-              value={USER.caloriesConsumed}
-              total={USER.calorieGoal}
-              color="#F97316"
-            />
-          </View>
-
-          {/* Water */}
-          <View>
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
-              <Text
-                style={{ color: "#F1F5F9", fontSize: 13, fontWeight: "500" }}
-              >
-                💧 Water
-              </Text>
-              <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                {USER.waterConsumed} / {USER.waterGoal} glasses
-              </Text>
-            </View>
-            <ProgressBar
-              value={USER.waterConsumed}
-              total={USER.waterGoal}
-              color="#38BDF8"
-            />
-          </View>
-
-          {/* Exercise */}
-          <View>
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
-              <Text
-                style={{ color: "#F1F5F9", fontSize: 13, fontWeight: "500" }}
-              >
-                🏃 Exercise
-              </Text>
-              <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                {USER.exerciseMin} / 30 min
-              </Text>
-            </View>
-            <ProgressBar
-              value={USER.exerciseMin}
-              total={30}
-              color="#22C55E"
-            />
-          </View>
+        <SectionTitle title="Today's Progress" subtitle="A quick glance at today's baseline stats." />
+        <View style={styles.progressStack}>
+          <ProgressCard
+            label="Calories"
+            value={profileData.caloriesConsumed}
+            total={profileData.calorieGoal}
+            unit="kcal"
+            icon="flame-outline"
+            tint="#F97316"
+          />
+          <ProgressCard
+            label="Water"
+            value={profileData.waterConsumed}
+            total={profileData.waterGoal}
+            unit="glasses"
+            icon="water-outline"
+            tint="#38BDF8"
+          />
+          <ProgressCard
+            label="Exercise"
+            value={profileData.exerciseMin}
+            total={30}
+            unit="min"
+            icon="walk-outline"
+            tint={ACCENT}
+          />
         </View>
 
-        {/* ── Preferences ── */}
-        <SectionLabel text="Preferences" />
-        <View
-          style={{
-            marginHorizontal: 16,
-            backgroundColor: "#0D1526",
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
-        >
-          <SettingRow
+        <SectionTitle
+          title="Preferences"
+          subtitle="Core settings that shape your nutrition experience."
+        />
+        <View style={styles.preferenceGrid}>
+          <PreferenceTile
             icon="scale-outline"
-            iconColor="#3B82F6"
-            iconBg="rgba(59,130,246,0.14)"
             label="Units"
             value="Metric"
+            tint="#4F8CF7"
           />
-          <SettingRow
+          <PreferenceTile
             icon="restaurant-outline"
-            iconColor="#22C55E"
-            iconBg="rgba(34,197,94,0.14)"
             label="Diet Type"
             value="Balanced"
+            tint={ACCENT}
           />
-          <SettingRow
+          <PreferenceTile
             icon="fitness-outline"
-            iconColor="#F97316"
-            iconBg="rgba(249,115,22,0.14)"
-            label="Activity Level"
+            label="Activity"
             value="Moderate"
+            tint="#F97316"
           />
-          {/* Notification toggle row */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 13,
-              paddingHorizontal: 16,
-              gap: 12,
-            }}
-          >
-            <View
-              style={{
-                width: 35,
-                height: 35,
-                borderRadius: 9,
-                backgroundColor: "rgba(168,85,247,0.14)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="notifications-outline" size={18} color="#A855F7" />
-            </View>
-            <Text
-              style={{ flex: 1, color: "#F1F5F9", fontSize: 14, fontWeight: "500" }}
-            >
-              Notifications
-            </Text>
-            <Switch
-              value={notificationsOn}
-              onValueChange={setNotificationsOn}
-              trackColor={{ false: "#1E2A45", true: "rgba(34,197,94,0.4)" }}
-              thumbColor={notificationsOn ? "#22C55E" : "#4B5563"}
-            />
+        </View>
+        <View style={styles.notificationCard}>
+          <View style={styles.notificationOrb}>
+            <Ionicons name="notifications-outline" size={20} color="#A78BFA" />
           </View>
+          <View style={styles.notificationCopy}>
+            <Text style={styles.notificationEyebrow}>Smart reminders</Text>
+            <Text style={styles.notificationTitle}>Notifications</Text>
+            <Text style={styles.notificationText}>
+              Meal reminders and progress nudges throughout the day.
+            </Text>
+          </View>
+          <Switch
+            value={notificationsOn}
+            onValueChange={setNotificationsOn}
+            trackColor={{ false: "#22304D", true: "rgba(46,217,114,0.34)" }}
+            thumbColor={notificationsOn ? ACCENT : "#51627F"}
+          />
         </View>
 
-        {/* ── Account ── */}
-        <SectionLabel text="Account" />
-        <View
-          style={{
-            marginHorizontal: 16,
-            backgroundColor: "#0D1526",
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
-        >
-          <SettingRow
-            icon="person-outline"
-            iconColor="#38BDF8"
-            iconBg="rgba(56,189,248,0.14)"
-            label="Edit Profile"
-          />
+        <SectionTitle
+          title="Account"
+          subtitle="Your signed-in identity and support tools."
+        />
+        <View style={styles.accountHeroCard}>
+          <View style={styles.accountHeroTop}>
+            <View style={styles.accountHeroBadge}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={ACCENT} />
+            </View>
+            <View style={styles.accountHeroCopy}>
+              <Text style={styles.accountHeroTitle}>{displayName}</Text>
+              <Text style={styles.accountHeroEmail}>{email}</Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={18} color={ACCENT} />
+          </View>
+          <View style={styles.accountMetaRow}>
+            <View style={styles.accountMetaPill}>
+              <Text style={styles.accountMetaLabel}>Provider</Text>
+              <Text style={styles.accountMetaValue}>{providerLabel}</Text>
+            </View>
+            <View style={styles.accountMetaPill}>
+              <Text style={styles.accountMetaLabel}>Plan</Text>
+              <Text style={styles.accountMetaValue}>Free</Text>
+            </View>
+            <View style={styles.accountMetaPill}>
+              <Text style={styles.accountMetaLabel}>Joined</Text>
+              <Text style={styles.accountMetaValue}>{joinedDate}</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.groupCard}>
           <SettingRow
             icon="star-outline"
-            iconColor="#EAB308"
-            iconBg="rgba(234,179,8,0.14)"
             label="Upgrade to Premium"
+            description="Unlock advanced insights and tailored plans."
             value="Free"
+            tint="#F8C44F"
           />
           <SettingRow
-            icon="shield-checkmark-outline"
-            iconColor="#22C55E"
-            iconBg="rgba(34,197,94,0.14)"
-            label="Privacy Policy"
+            icon="mail-outline"
+            label="Account Email"
+            value={email}
+            tint="#22C55E"
+            rightNode={<Ionicons name="copy-outline" size={16} color="#5D7193" />}
           />
           <SettingRow
             icon="help-circle-outline"
-            iconColor="#9CA3AF"
-            iconBg="rgba(156,163,175,0.14)"
-            label="Help & Support"
-            showChevron
+            label="Help and Support"
+            description="FAQs, troubleshooting, and contact options."
+            value="Available"
+            tint="#94A3B8"
           />
         </View>
 
-        {/* ── Sign out ── */}
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginTop: 16,
-            backgroundColor: "#0D1526",
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleSignOut}
+          style={({ pressed }) => [
+            styles.signOutButton,
+            pressed || isSigningOut ? styles.signOutButtonPressed : null,
+          ]}
         >
-          <SettingRow
-            icon="log-out-outline"
-            iconColor="#EF4444"
-            iconBg="rgba(239,68,68,0.14)"
-            label="Sign Out"
-            danger
-            showChevron={false}
-            onPress={() => {}}
-          />
-        </View>
+          {isSigningOut ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </>
+          )}
+        </Pressable>
 
-        {/* App version */}
-        <Text
-          style={{
-            color: "#1F2937",
-            fontSize: 11,
-            textAlign: "center",
-            marginTop: 24,
-          }}
-        >
-          HealthBangla v1.0.0
-        </Text>
+        <Text style={styles.versionText}>HealthBangla v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  heroShell: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  heroGlow: {
+    position: "absolute",
+    right: 0,
+    top: 48,
+    height: 220,
+    width: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(46,217,114,0.10)",
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+  },
+  topBarTitle: {
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  iconButton: {
+    height: 40,
+    width: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  iconButtonPressed: {
+    opacity: 0.85,
+  },
+  heroCard: {
+    overflow: "hidden",
+    borderRadius: 28,
+    backgroundColor: CARD_ALT,
+    paddingHorizontal: 20,
+    paddingTop: 26,
+    paddingBottom: 22,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  heroPatternOne: {
+    position: "absolute",
+    top: -60,
+    right: -20,
+    height: 180,
+    width: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(56,189,248,0.12)",
+  },
+  heroPatternTwo: {
+    position: "absolute",
+    bottom: -80,
+    left: -40,
+    height: 180,
+    width: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(46,217,114,0.09)",
+  },
+  avatarButton: {
+    alignSelf: "center",
+    marginBottom: 18,
+  },
+  avatarRing: {
+    height: 108,
+    width: 108,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 54,
+    backgroundColor: "rgba(46,217,114,0.20)",
+    borderWidth: 1,
+    borderColor: "rgba(46,217,114,0.35)",
+  },
+  avatarCore: {
+    height: 94,
+    width: 94,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 47,
+    backgroundColor: "#18243F",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    height: 94,
+    width: 94,
+  },
+  avatarInitials: {
+    color: TEXT,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  avatarBadge: {
+    position: "absolute",
+    right: 2,
+    bottom: 2,
+    height: 28,
+    width: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: CARD_ALT,
+  },
+  heroName: {
+    color: TEXT,
+    fontSize: 24,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  heroEmail: {
+    marginTop: 6,
+    color: MUTED,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  heroMetaRow: {
+    marginTop: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(3,10,35,0.42)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  pillText: {
+    color: "#D7E1F0",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  metricsRow: {
+    marginTop: 18,
+    flexDirection: "row",
+    gap: 10,
+  },
+  metricCard: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 20,
+    backgroundColor: "rgba(3,10,35,0.42)",
+    paddingHorizontal: 10,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  metricIconWrap: {
+    marginBottom: 10,
+    height: 34,
+    width: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 17,
+  },
+  metricValue: {
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  metricLabel: {
+    marginTop: 4,
+    color: MUTED,
+    fontSize: 11,
+    textAlign: "center",
+  },
+  sectionHeader: {
+    marginTop: 12,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    color: TEXT,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  sectionSubtitle: {
+    marginTop: 4,
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  preferenceGrid: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  preferenceTile: {
+    flex: 1,
+    borderRadius: 20,
+    backgroundColor: CARD,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  preferenceTileIcon: {
+    height: 38,
+    width: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  preferenceTileLabel: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  preferenceTileValue: {
+    marginTop: 8,
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  detailCard: {
+    width: "47%",
+    minHeight: 108,
+    justifyContent: "space-between",
+    borderRadius: 20,
+    backgroundColor: CARD,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  detailIconWrap: {
+    height: 34,
+    width: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 17,
+    marginBottom: 10,
+  },
+  detailLabel: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  detailValue: {
+    marginTop: 6,
+    color: TEXT,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  progressStack: {
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  notificationCard: {
+    marginTop: 10,
+    marginHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderRadius: 22,
+    backgroundColor: CARD,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  notificationOrb: {
+    height: 44,
+    width: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "rgba(168,85,247,0.12)",
+  },
+  notificationCopy: {
+    flex: 1,
+  },
+  notificationEyebrow: {
+    color: "#A78BFA",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  notificationTitle: {
+    marginTop: 3,
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  notificationText: {
+    marginTop: 4,
+    color: MUTED,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  accountHeroCard: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 24,
+    backgroundColor: CARD,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  accountHeroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  accountHeroBadge: {
+    height: 42,
+    width: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "rgba(46,217,114,0.12)",
+  },
+  accountHeroCopy: {
+    flex: 1,
+  },
+  accountHeroTitle: {
+    color: TEXT,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  accountHeroEmail: {
+    marginTop: 3,
+    color: MUTED,
+    fontSize: 13,
+  },
+  accountMetaRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 16,
+  },
+  accountMetaPill: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  accountMetaLabel: {
+    color: "#7F92B2",
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  accountMetaValue: {
+    marginTop: 6,
+    color: TEXT,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  progressCard: {
+    borderRadius: 20,
+    backgroundColor: CARD,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  progressTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  progressLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  progressIconWrap: {
+    height: 32,
+    width: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+  },
+  progressLabel: {
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  progressNumbers: {
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  progressTrack: {
+    marginTop: 14,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "#1B2944",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  groupCard: {
+    marginHorizontal: 16,
+    overflow: "hidden",
+    borderRadius: 22,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  settingRowPressed: {
+    opacity: 0.88,
+  },
+  settingIconWrap: {
+    height: 38,
+    width: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  },
+  settingCopy: {
+    flex: 1,
+  },
+  settingLabel: {
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  settingDangerLabel: {
+    color: "#F87171",
+  },
+  settingValue: {
+    marginTop: 3,
+    color: MUTED,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  settingDescription: {
+    marginTop: 3,
+    color: "#A9B7CD",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+  },
+  signOutButton: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderRadius: 18,
+    backgroundColor: "#D94A4A",
+  },
+  signOutButtonPressed: {
+    opacity: 0.9,
+  },
+  signOutText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  versionText: {
+    marginTop: 18,
+    color: "#42516D",
+    fontSize: 11,
+    textAlign: "center",
+  },
+});

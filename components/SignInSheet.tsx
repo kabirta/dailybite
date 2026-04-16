@@ -1,10 +1,11 @@
-import { Animated, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, Text, View } from "react-native";
 
 type SignInSheetProps = {
   sheetAnimation: Animated.Value;
   onClose: () => void;
   onEmailLogin: () => void;
   onGoogleLogin: () => void;
+  isGoogleLoading?: boolean;
 };
 
 export default function SignInSheet({
@@ -12,6 +13,7 @@ export default function SignInSheet({
   onClose,
   onEmailLogin,
   onGoogleLogin,
+  isGoogleLoading = false,
 }: SignInSheetProps) {
   const sheetTranslateY = sheetAnimation.interpolate({
     inputRange: [0, 1],
@@ -46,6 +48,7 @@ export default function SignInSheet({
 
         <Pressable
           className="mt-10 h-16 items-center justify-center rounded-2xl bg-[#2ED972] active:opacity-90"
+          disabled={isGoogleLoading}
           onPress={onEmailLogin}
         >
           <Text className="text-[13px] font-bold tracking-wide text-[#03162F]">
@@ -57,14 +60,23 @@ export default function SignInSheet({
 
         <Pressable
           className="mt-7 h-16 flex-row items-center rounded-2xl bg-[#4E88E9] px-4 active:opacity-90"
+          disabled={isGoogleLoading}
           onPress={onGoogleLogin}
         >
-          <View className="h-11 w-11 items-center justify-center rounded-lg bg-white">
-            <Text className="text-3xl font-extrabold text-[#4285F4]">G</Text>
-          </View>
-          <Text className="ml-8 text-[13px] font-bold tracking-wide text-[#06162D]">
-            CONTINUE WITH GOOGLE
-          </Text>
+          {isGoogleLoading ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color="#06162D" />
+            </View>
+          ) : (
+            <>
+              <View className="h-11 w-11 items-center justify-center rounded-lg bg-white">
+                <Text className="text-3xl font-extrabold text-[#4285F4]">G</Text>
+              </View>
+              <Text className="ml-8 text-[13px] font-bold tracking-wide text-[#06162D]">
+                SIGN IN WITH GOOGLE
+              </Text>
+            </>
+          )}
         </Pressable>
 
         <View className="mt-9 flex-row items-center justify-center">
