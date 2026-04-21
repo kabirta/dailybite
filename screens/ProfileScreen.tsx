@@ -17,9 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { onAuthStateChanged, type Auth, type User } from "firebase/auth";
 
-import { auth } from "../src/config/firebase";
+import { auth as rawAuth } from "../src/config/firebase";
 import { signOutUser } from "../src/services/authService";
 
 const AVATAR_STORAGE_KEY = "@healthbangla_avatar_uri";
@@ -30,6 +30,7 @@ const TEXT = "#F8FAFC";
 const MUTED = "#93A4BF";
 const BORDER = "rgba(255,255,255,0.08)";
 const ACCENT = "#2ED972";
+const auth = rawAuth as Auth;
 
 const PROFILE_PLACEHOLDERS = {
   streak: 7,

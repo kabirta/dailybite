@@ -148,7 +148,7 @@ export default function DiaryHomeScreen() {
         />
         <MealSection
           title="Dinner"
-          iconName="sunset-outline"
+          iconName="moon-outline"
           iconColor="#F97316"
           onPress={() => router.push("/add-meal?meal=Dinner")}
           onAdd={() => router.push("/add-meal?meal=Dinner")}

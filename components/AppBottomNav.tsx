@@ -4,11 +4,11 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface BottomTabItem {
-  key: "community" | "diary" | "reports" | "premium";
+  key: "community" | "diary" | "reports" | "store" | "premium";
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   activeIcon?: keyof typeof Ionicons.glyphMap;
-  href?: "/chat" | "/diary" | "/reports" | "/premium";
+  href?: "/chat" | "/diary" | "/reports" | "/store" | "/premium";
 }
 
 const BOTTOM_TABS: BottomTabItem[] = [
@@ -34,6 +34,13 @@ const BOTTOM_TABS: BottomTabItem[] = [
     href: "/reports",
   },
   {
+    key: "store",
+    label: "Store",
+    icon: "storefront-outline",
+    activeIcon: "storefront",
+    href: "/store",
+  },
+  {
     key: "premium",
     label: "Premium",
     icon: "person-circle-outline",
@@ -45,6 +52,7 @@ const BOTTOM_TABS: BottomTabItem[] = [
 function getActiveTabKey(pathname: string): BottomTabItem["key"] {
   if (pathname === "/chat") return "community";
   if (pathname === "/premium") return "premium";
+  if (pathname === "/store") return "store";
   if (pathname === "/reports") return "reports";
   return "diary";
 }

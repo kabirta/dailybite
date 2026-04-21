@@ -303,7 +303,7 @@ const MEAL_META: Record<
 > = {
   Breakfast: { icon: "partly-sunny-outline", color: "#FBBF24" },
   Lunch:     { icon: "sunny-outline",        color: "#EAB308" },
-  Dinner:    { icon: "sunset-outline",       color: "#F97316" },
+  Dinner:    { icon: "moon-outline",         color: "#F97316" },
   Snacks:    { icon: "moon-outline",         color: "#A78BFA" },
 };
 
