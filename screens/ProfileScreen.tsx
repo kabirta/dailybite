@@ -1,16 +1,8 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useEffect, useMemo, useState } from "react";
 
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import {
-  type Auth,
-  onAuthStateChanged,
-  type User,
-} from 'firebase/auth';
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { type Auth, onAuthStateChanged, type User } from "firebase/auth";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -22,20 +14,21 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Header } from '../components/Header';
+import { Header } from "../components/Header";
 import {
   SCREEN_COLORS,
   ScreenBackground,
-} from '../components/ScreenBackground';
-import { auth as rawAuth } from '../src/config/firebase';
-import { signOutUser } from '../src/services/authService';
+} from "../components/ScreenBackground";
+import { auth as rawAuth } from "../src/config/firebase";
+import { signOutUser } from "../src/services/authService";
 
 const AVATAR_STORAGE_KEY = "@healthbangla_avatar_uri";
 const CARD = SCREEN_COLORS.card;
@@ -136,7 +129,13 @@ function getProviderLabel(user: User | null) {
   return "Firebase";
 }
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionTitle({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -180,7 +179,9 @@ function PreferenceTile({
 }) {
   return (
     <View style={styles.preferenceTile}>
-      <View style={[styles.preferenceTileIcon, { backgroundColor: `${tint}20` }]}>
+      <View
+        style={[styles.preferenceTileIcon, { backgroundColor: `${tint}20` }]}
+      >
         <Ionicons name={icon} size={18} color={tint} />
       </View>
       <Text style={styles.preferenceTileLabel}>{label}</Text>
@@ -232,7 +233,9 @@ function ProgressCard({
     <View style={styles.progressCard}>
       <View style={styles.progressTopRow}>
         <View style={styles.progressLabelRow}>
-          <View style={[styles.progressIconWrap, { backgroundColor: `${tint}20` }]}>
+          <View
+            style={[styles.progressIconWrap, { backgroundColor: `${tint}20` }]}
+          >
             <Ionicons name={icon} size={16} color={tint} />
           </View>
           <Text style={styles.progressLabel}>{label}</Text>
@@ -280,14 +283,23 @@ function SettingRow({
       </View>
 
       <View style={styles.settingCopy}>
-        <Text style={[styles.settingLabel, danger ? styles.settingDangerLabel : null]}>
+        <Text
+          style={[
+            styles.settingLabel,
+            danger ? styles.settingDangerLabel : null,
+          ]}
+        >
           {label}
         </Text>
-        {description ? <Text style={styles.settingDescription}>{description}</Text> : null}
+        {description ? (
+          <Text style={styles.settingDescription}>{description}</Text>
+        ) : null}
         {value ? <Text style={styles.settingValue}>{value}</Text> : null}
       </View>
 
-      {rightNode ?? <Ionicons name="chevron-forward" size={16} color="#3F516E" />}
+      {rightNode ?? (
+        <Ionicons name="chevron-forward" size={16} color="#3F516E" />
+      )}
     </Pressable>
   );
 }
@@ -312,7 +324,7 @@ export default function ProfileScreen() {
       joinedDate,
       ...PROFILE_PLACEHOLDERS,
     }),
-    [displayName, email, joinedDate]
+    [displayName, email, joinedDate],
   );
 
   useEffect(() => {
@@ -344,7 +356,10 @@ export default function ProfileScreen() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
     if (status !== "granted") {
-      Alert.alert("Permission required", "Camera access is needed to take a photo.");
+      Alert.alert(
+        "Permission required",
+        "Camera access is needed to take a photo.",
+      );
       return;
     }
 
@@ -366,7 +381,7 @@ export default function ProfileScreen() {
     if (status !== "granted") {
       Alert.alert(
         "Permission required",
-        "Photo library access is needed to choose a photo."
+        "Photo library access is needed to choose a photo.",
       );
       return;
     }
@@ -392,7 +407,12 @@ export default function ProfileScreen() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ["Cancel", "Take Photo", "Choose from Library", "Remove Photo"],
+          options: [
+            "Cancel",
+            "Take Photo",
+            "Choose from Library",
+            "Remove Photo",
+          ],
           cancelButtonIndex: 0,
           destructiveButtonIndex: 3,
           title: "Update profile photo",
@@ -405,7 +425,7 @@ export default function ProfileScreen() {
           } else if (index === 3) {
             void clearCustomAvatar();
           }
-        }
+        },
       );
       return;
     }
@@ -415,12 +435,12 @@ export default function ProfileScreen() {
       { text: "Choose from Library", onPress: () => void openGallery() },
       ...(avatarUri
         ? [
-            {
-              text: "Remove Photo",
-              style: "destructive" as const,
-              onPress: () => void clearCustomAvatar(),
-            },
-          ]
+          {
+            text: "Remove Photo",
+            style: "destructive" as const,
+            onPress: () => void clearCustomAvatar(),
+          },
+        ]
         : []),
       { text: "Cancel", style: "cancel" },
     ]);
@@ -438,7 +458,9 @@ export default function ProfileScreen() {
     } catch (error) {
       Alert.alert(
         "Sign Out Failed",
-        error instanceof Error ? error.message : "Unable to sign out right now."
+        error instanceof Error
+          ? error.message
+          : "Unable to sign out right now.",
       );
     } finally {
       setIsSigningOut(false);
@@ -448,260 +470,305 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScreenBackground>
-      <Header />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.heroShell}>
-          <View style={styles.heroGlow} />
-          {false ? (
-          <View style={styles.topBar}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.back()}
-              style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
-            >
-              <Ionicons name="arrow-back" size={20} color={SCREEN_COLORS.primaryDark} />
-            </Pressable>
+        <Header />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.heroShell}>
+            <View style={styles.heroGlow} />
+            {false ? (
+              <View style={styles.topBar}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.back()}
+                  style={({ pressed }) => [
+                    styles.iconButton,
+                    pressed && styles.iconButtonPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={20}
+                    color={SCREEN_COLORS.primaryDark}
+                  />
+                </Pressable>
 
-            <Text style={styles.topBarTitle}>Profile</Text>
+                <Text style={styles.topBarTitle}>Profile</Text>
 
-            <Pressable style={styles.iconButton}>
-              <Ionicons name="create-outline" size={20} color={SCREEN_COLORS.primaryDark} />
-            </Pressable>
-          </View>
-          ) : null}
+                <Pressable style={styles.iconButton}>
+                  <Ionicons
+                    name="create-outline"
+                    size={20}
+                    color={SCREEN_COLORS.primaryDark}
+                  />
+                </Pressable>
+              </View>
+            ) : null}
 
-          <View style={styles.heroCard}>
-            <View style={styles.heroPatternOne} />
-            <View style={styles.heroPatternTwo} />
+            <View style={styles.heroCard}>
+              <View style={styles.heroPatternOne} />
+              <View style={styles.heroPatternTwo} />
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleAvatarPress}
-              style={({ pressed }) => [
-                styles.avatarButton,
-                pressed ? { opacity: 0.92 } : null,
-              ]}
-            >
-              <View style={styles.avatarRing}>
-                <View style={styles.avatarCore}>
-                  {resolvedAvatarUri ? (
-                    <Image source={{ uri: resolvedAvatarUri }} style={styles.avatarImage} />
-                  ) : (
-                    <Text style={styles.avatarInitials}>{getInitials(displayName)}</Text>
-                  )}
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleAvatarPress}
+                style={({ pressed }) => [
+                  styles.avatarButton,
+                  pressed ? { opacity: 0.92 } : null,
+                ]}
+              >
+                <View style={styles.avatarRing}>
+                  <View style={styles.avatarCore}>
+                    {resolvedAvatarUri ? (
+                      <Image
+                        source={{ uri: resolvedAvatarUri }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <Text style={styles.avatarInitials}>
+                        {getInitials(displayName)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.avatarBadge}>
+                  <Ionicons name="camera" size={14} color="#031322" />
+                </View>
+              </Pressable>
+
+              <Text style={styles.heroName}>{profileData.name}</Text>
+              <Text style={styles.heroEmail}>{profileData.email}</Text>
+
+              <View style={styles.heroMetaRow}>
+                <View style={styles.pill}>
+                  <Ionicons name="flash" size={12} color={ACCENT} />
+                  <Text style={styles.pillText}>Firebase auth</Text>
+                </View>
+                <View style={styles.pill}>
+                  <Ionicons name="time-outline" size={12} color="#F8C44F" />
+                  <Text style={styles.pillText}>
+                    Member since {profileData.joinedDate}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.avatarBadge}>
-                <Ionicons name="camera" size={14} color="#031322" />
+
+              <View style={styles.metricsRow}>
+                <MetricCard
+                  icon="flame-outline"
+                  value={profileData.streak}
+                  label="Streak"
+                  tint="#F97316"
+                />
+                <MetricCard
+                  icon="restaurant-outline"
+                  value={profileData.foodsLogged}
+                  label="Meals logged"
+                  tint="#38BDF8"
+                />
+                <MetricCard
+                  icon="calendar-outline"
+                  value={profileData.daysActive}
+                  label="Active days"
+                  tint={ACCENT}
+                />
               </View>
-            </Pressable>
+            </View>
+          </View>
 
-            <Text style={styles.heroName}>{profileData.name}</Text>
-            <Text style={styles.heroEmail}>{profileData.email}</Text>
+          <SectionTitle
+            title="Body Snapshot"
+            subtitle="These can be connected to onboarding or saved profile fields next."
+          />
+          <View style={styles.grid}>
+            <DetailCard
+              label="Age"
+              value={profileData.age}
+              icon="time-outline"
+              tint="#F97316"
+            />
+            <DetailCard
+              label="Height"
+              value={profileData.height}
+              icon="resize-outline"
+              tint="#38BDF8"
+            />
+            <DetailCard
+              label="Weight"
+              value={profileData.weight}
+              icon="barbell-outline"
+              tint="#A78BFA"
+            />
+            <DetailCard
+              label="Goal"
+              value={profileData.goal}
+              icon="flag-outline"
+              tint={ACCENT}
+            />
+          </View>
 
-            <View style={styles.heroMetaRow}>
-              <View style={styles.pill}>
-                <Ionicons name="flash" size={12} color={ACCENT} />
-                <Text style={styles.pillText}>Firebase auth</Text>
+          <SectionTitle
+            title="Today's Progress"
+            subtitle="A quick glance at today's baseline stats."
+          />
+          <View style={styles.progressStack}>
+            <ProgressCard
+              label="Calories"
+              value={profileData.caloriesConsumed}
+              total={profileData.calorieGoal}
+              unit="kcal"
+              icon="flame-outline"
+              tint="#F97316"
+            />
+            <ProgressCard
+              label="Water"
+              value={profileData.waterConsumed}
+              total={profileData.waterGoal}
+              unit="glasses"
+              icon="water-outline"
+              tint="#38BDF8"
+            />
+            <ProgressCard
+              label="Exercise"
+              value={profileData.exerciseMin}
+              total={30}
+              unit="min"
+              icon="walk-outline"
+              tint={ACCENT}
+            />
+          </View>
+
+          <SectionTitle
+            title="Preferences"
+            subtitle="Core settings that shape your nutrition experience."
+          />
+          <View style={styles.preferenceGrid}>
+            <PreferenceTile
+              icon="scale-outline"
+              label="Units"
+              value="Metric"
+              tint="#4F8CF7"
+            />
+            <PreferenceTile
+              icon="restaurant-outline"
+              label="Diet Type"
+              value="Balanced"
+              tint={ACCENT}
+            />
+            <PreferenceTile
+              icon="fitness-outline"
+              label="Activity"
+              value="Moderate"
+              tint="#F97316"
+            />
+          </View>
+          <View style={styles.notificationCard}>
+            <View style={styles.notificationOrb}>
+              <Ionicons
+                name="notifications-outline"
+                size={20}
+                color="#A78BFA"
+              />
+            </View>
+            <View style={styles.notificationCopy}>
+              <Text style={styles.notificationEyebrow}>Smart reminders</Text>
+              <Text style={styles.notificationTitle}>Notifications</Text>
+              <Text style={styles.notificationText}>
+                Meal reminders and progress nudges throughout the day.
+              </Text>
+            </View>
+            <Switch
+              value={notificationsOn}
+              onValueChange={setNotificationsOn}
+              trackColor={{ false: "#22304D", true: "rgba(46,217,114,0.34)" }}
+              thumbColor={notificationsOn ? ACCENT : "#51627F"}
+            />
+          </View>
+
+          <SectionTitle
+            title="Account"
+            subtitle="Your signed-in identity and support tools."
+          />
+          <View style={styles.accountHeroCard}>
+            <View style={styles.accountHeroTop}>
+              <View style={styles.accountHeroBadge}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={18}
+                  color={ACCENT}
+                />
               </View>
-              <View style={styles.pill}>
-                <Ionicons name="time-outline" size={12} color="#F8C44F" />
-                <Text style={styles.pillText}>Member since {profileData.joinedDate}</Text>
+              <View style={styles.accountHeroCopy}>
+                <Text style={styles.accountHeroTitle}>{displayName}</Text>
+                <Text style={styles.accountHeroEmail}>{email}</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={18} color={ACCENT} />
+            </View>
+            <View style={styles.accountMetaRow}>
+              <View style={styles.accountMetaPill}>
+                <Text style={styles.accountMetaLabel}>Provider</Text>
+                <Text style={styles.accountMetaValue}>{providerLabel}</Text>
+              </View>
+              <View style={styles.accountMetaPill}>
+                <Text style={styles.accountMetaLabel}>Plan</Text>
+                <Text style={styles.accountMetaValue}>Free</Text>
+              </View>
+              <View style={styles.accountMetaPill}>
+                <Text style={styles.accountMetaLabel}>Joined</Text>
+                <Text style={styles.accountMetaValue}>{joinedDate}</Text>
               </View>
             </View>
-
-            <View style={styles.metricsRow}>
-              <MetricCard
-                icon="flame-outline"
-                value={profileData.streak}
-                label="Streak"
-                tint="#F97316"
-              />
-              <MetricCard
-                icon="restaurant-outline"
-                value={profileData.foodsLogged}
-                label="Meals logged"
-                tint="#38BDF8"
-              />
-              <MetricCard
-                icon="calendar-outline"
-                value={profileData.daysActive}
-                label="Active days"
-                tint={ACCENT}
-              />
-            </View>
           </View>
-        </View>
+          <View style={styles.groupCard}>
+            <TouchableOpacity
+              style={styles.premiumButton}
+              activeOpacity={0.85}
+              onPress={() => router.push("/premium-plan")}
+            >
+              <Text style={styles.premiumTitle}>Upgrade to Premium</Text>
+              <Text style={styles.premiumSubtitle}>
+                Unlock advanced insights and tailored plans
+              </Text>
+            </TouchableOpacity>
 
-        <SectionTitle
-          title="Body Snapshot"
-          subtitle="These can be connected to onboarding or saved profile fields next."
-        />
-        <View style={styles.grid}>
-          <DetailCard label="Age" value={profileData.age} icon="time-outline" tint="#F97316" />
-          <DetailCard
-            label="Height"
-            value={profileData.height}
-            icon="resize-outline"
-            tint="#38BDF8"
-          />
-          <DetailCard
-            label="Weight"
-            value={profileData.weight}
-            icon="barbell-outline"
-            tint="#A78BFA"
-          />
-          <DetailCard
-            label="Goal"
-            value={profileData.goal}
-            icon="flag-outline"
-            tint={ACCENT}
-          />
-        </View>
-
-        <SectionTitle title="Today's Progress" subtitle="A quick glance at today's baseline stats." />
-        <View style={styles.progressStack}>
-          <ProgressCard
-            label="Calories"
-            value={profileData.caloriesConsumed}
-            total={profileData.calorieGoal}
-            unit="kcal"
-            icon="flame-outline"
-            tint="#F97316"
-          />
-          <ProgressCard
-            label="Water"
-            value={profileData.waterConsumed}
-            total={profileData.waterGoal}
-            unit="glasses"
-            icon="water-outline"
-            tint="#38BDF8"
-          />
-          <ProgressCard
-            label="Exercise"
-            value={profileData.exerciseMin}
-            total={30}
-            unit="min"
-            icon="walk-outline"
-            tint={ACCENT}
-          />
-        </View>
-
-        <SectionTitle
-          title="Preferences"
-          subtitle="Core settings that shape your nutrition experience."
-        />
-        <View style={styles.preferenceGrid}>
-          <PreferenceTile
-            icon="scale-outline"
-            label="Units"
-            value="Metric"
-            tint="#4F8CF7"
-          />
-          <PreferenceTile
-            icon="restaurant-outline"
-            label="Diet Type"
-            value="Balanced"
-            tint={ACCENT}
-          />
-          <PreferenceTile
-            icon="fitness-outline"
-            label="Activity"
-            value="Moderate"
-            tint="#F97316"
-          />
-        </View>
-        <View style={styles.notificationCard}>
-          <View style={styles.notificationOrb}>
-            <Ionicons name="notifications-outline" size={20} color="#A78BFA" />
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: "#334155" }]} // darker blue/gray
+              activeOpacity={0.85}
+              onPress={() => router.push("/help-support")}
+            >
+              <Text style={styles.actionTitle}>Help and Support</Text>
+              <Text style={styles.actionSubtitle}>
+                FAQs, troubleshooting, and contact options
+              </Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.notificationCopy}>
-            <Text style={styles.notificationEyebrow}>Smart reminders</Text>
-            <Text style={styles.notificationTitle}>Notifications</Text>
-            <Text style={styles.notificationText}>
-              Meal reminders and progress nudges throughout the day.
-            </Text>
-          </View>
-          <Switch
-            value={notificationsOn}
-            onValueChange={setNotificationsOn}
-            trackColor={{ false: "#22304D", true: "rgba(46,217,114,0.34)" }}
-            thumbColor={notificationsOn ? ACCENT : "#51627F"}
-          />
-        </View>
 
-        <SectionTitle
-          title="Account"
-          subtitle="Your signed-in identity and support tools."
-        />
-        <View style={styles.accountHeroCard}>
-          <View style={styles.accountHeroTop}>
-            <View style={styles.accountHeroBadge}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={ACCENT} />
-            </View>
-            <View style={styles.accountHeroCopy}>
-              <Text style={styles.accountHeroTitle}>{displayName}</Text>
-              <Text style={styles.accountHeroEmail}>{email}</Text>
-            </View>
-            <Ionicons name="checkmark-circle" size={18} color={ACCENT} />
-          </View>
-          <View style={styles.accountMetaRow}>
-            <View style={styles.accountMetaPill}>
-              <Text style={styles.accountMetaLabel}>Provider</Text>
-              <Text style={styles.accountMetaValue}>{providerLabel}</Text>
-            </View>
-            <View style={styles.accountMetaPill}>
-              <Text style={styles.accountMetaLabel}>Plan</Text>
-              <Text style={styles.accountMetaValue}>Free</Text>
-            </View>
-            <View style={styles.accountMetaPill}>
-              <Text style={styles.accountMetaLabel}>Joined</Text>
-              <Text style={styles.accountMetaValue}>{joinedDate}</Text>
-            </View>
-          </View>
-        </View>
-        <View style={styles.groupCard}>
-          <SettingRow
-            icon="star-outline"
-            label="Upgrade to Premium"
-            description="Unlock advanced insights and tailored plans."
-            value="Free"
-            tint="#F8C44F"
-            onPress={() => router.push("/premium-plan")}
-          />
-         
-          <SettingRow
-            icon="help-circle-outline"
-            label="Help and Support"
-            description="FAQs, troubleshooting, and contact options."
-            value="Available"
-            tint="#94A3B8"
-          />
-        </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSignOut}
+            style={({ pressed }) => [
+              styles.signOutButton,
+              pressed || isSigningOut ? styles.signOutButtonPressed : null,
+            ]}
+          >
+            {isSigningOut ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+                <TouchableOpacity
+                  style={styles.signOutButton}
+                  activeOpacity={0.8}
+                  onPress={handleSignOut} // your logout function
+                >
+                  <Text style={styles.signOutText}>Sign Out</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleSignOut}
-          style={({ pressed }) => [
-            styles.signOutButton,
-            pressed || isSigningOut ? styles.signOutButtonPressed : null,
-          ]}
-        >
-          {isSigningOut ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </>
-          )}
-        </Pressable>
-
-        <Text style={styles.versionText}>HealthBangla v1.0.0</Text>
-      </ScrollView>
+          <Text style={styles.versionText}>HealthBangla v1.0.0</Text>
+        </ScrollView>
       </ScreenBackground>
     </SafeAreaView>
   );
@@ -1210,7 +1277,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   signOutText: {
-    color: "#FFFFFF",
+    color: "",
     fontSize: 16,
     fontWeight: "700",
   },
@@ -1218,6 +1285,67 @@ const styles = StyleSheet.create({
     marginTop: 18,
     color: SCREEN_COLORS.textMuted,
     fontSize: 11,
+    textAlign: "center",
+  },
+  premiumButton: {
+    backgroundColor: "#007BFF",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+
+    // spacing inside card
+    margin: 10,
+
+    // center content
+    alignItems: "center",
+    justifyContent: "center",
+
+    // shadow
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+  },
+
+  premiumTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  premiumSubtitle: {
+    color: "#DCE6FF",
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  actionButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    margin: 10,
+    alignItems: "center",
+    justifyContent: "center",
+
+    // shadow
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+
+  actionTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  actionSubtitle: {
+    color: "#CBD5F5",
+    fontSize: 12,
+    marginTop: 4,
     textAlign: "center",
   },
 });

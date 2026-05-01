@@ -277,11 +277,11 @@ function StepCard({
           {eyebrow}
         </Text>
         {badge}
-        <Text className="text-[40px] font-extrabold leading-[48px]" style={{ color: SURFACE.primaryDark }}>
+        <Text className="text-[35px] font-extrabold leading-[48px]" style={{ color: SURFACE.primaryDark }}>
           {title}
         </Text>
         {subtitle ? (
-          <Text className="mt-3 text-[19px] leading-8" style={{ color: SURFACE.secondary }}>
+          <Text className="mt-3 text-[15px] leading-8" style={{ color: SURFACE.secondary }}>
             {subtitle}
           </Text>
         ) : null}
@@ -630,7 +630,7 @@ export default function OnboardingScreen() {
                 <TextInput
                   className="mt-3 h-14 text-[25px] font-semibold"
                   style={{ color: SURFACE.primaryDark }}
-                  placeholder={answers.heightUnit === "cm" ? "170" : "5.7"}
+                  
                   placeholderTextColor="#9FB6CC"
                   keyboardType="decimal-pad"
                   value={answers.height}
@@ -684,7 +684,7 @@ export default function OnboardingScreen() {
                 <TextInput
                   className="mt-3 h-14 text-[25px] font-semibold"
                   style={{ color: SURFACE.primaryDark }}
-                  placeholder="60"
+                 
                   placeholderTextColor="#9FB6CC"
                   keyboardType="decimal-pad"
                   value={answers.weight}
