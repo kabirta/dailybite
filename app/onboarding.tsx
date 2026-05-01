@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type RegionOption = "India" | "Other";
 type GoalDirection = "lose_weight" | "maintain_weight" | "work_that_out";
 type MainGoalOption =
   | "understand_food"
@@ -23,7 +22,6 @@ type SexOption = "female" | "male";
 type ActivityLevel = "low" | "moderate" | "high" | "very_high";
 
 type StepId =
-  | "region"
   | "first_name"
   | "welcome"
   | "direction"
@@ -38,7 +36,6 @@ type StepId =
   | "activity";
 
 type OnboardingAnswers = {
-  region: RegionOption | null;
   firstName: string;
   direction: GoalDirection | null;
   mainGoal: MainGoalOption | null;
@@ -53,7 +50,6 @@ type OnboardingAnswers = {
 };
 
 const FLOW_STEPS: StepId[] = [
-  "region",
   "first_name",
   "welcome",
   "direction",
@@ -79,6 +75,35 @@ const CHALLENGE_OPTIONS = [
 ];
 
 const PROGRESS_SEGMENTS = 8;
+const SURFACE = {
+  background: "#EAF6FF",
+  card: "rgba(255,255,255,0.82)",
+  cardStrong: "#F8FCFF",
+  primary: "#2797FF",
+  primaryDark: "#12314F",
+  secondary: "#67809B",
+  muted: "#88A6C4",
+  border: "#D7E8F7",
+  borderSoft: "#CFE3F5",
+  selection: "#E7F4FF",
+  selectionSoft: "#F3F9FF",
+  progressInactive: "rgba(87, 127, 166, 0.18)",
+  footer: "rgba(234, 246, 255, 0.88)",
+};
+const CARD_SHADOW = {
+  shadowColor: "#70B9FF",
+  shadowOpacity: 0.14,
+  shadowRadius: 28,
+  shadowOffset: { width: 0, height: 16 },
+  elevation: 8,
+};
+const OPTION_SHADOW = {
+  shadowColor: "#8ABAE7",
+  shadowOpacity: 0.08,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 10 },
+  elevation: 3,
+};
 
 function isPositiveNumber(value: string) {
   const parsed = Number(value.trim());
@@ -124,38 +149,145 @@ function calculateAge(date: Date) {
   return age;
 }
 
+function SelectionIndicator({
+  selected,
+  shape = "circle",
+}: {
+  selected: boolean;
+  shape?: "circle" | "square";
+}) {
+  return (
+    <View
+      className="mt-1 h-7 w-7 items-center justify-center border"
+      style={{
+        borderRadius: shape === "square" ? 8 : 999,
+        borderColor: selected ? SURFACE.primary : "#BDD8EE",
+        backgroundColor: selected ? SURFACE.primary : "#FFFFFF",
+      }}
+    >
+      {selected ? (
+        <View
+          className={shape === "square" ? "h-3 w-3 rounded-sm bg-white" : "h-3 w-3 rounded-full bg-white"}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 function OptionCard({
   label,
   description,
   selected,
   onPress,
+  indicator = "circle",
 }: {
   label: string;
   description?: string;
   selected: boolean;
   onPress: () => void;
+  indicator?: "circle" | "square";
 }) {
   return (
     <Pressable
-      className="mb-4 rounded-2xl border px-5 py-5"
+      className="mb-3 rounded-[28px] border px-5 py-5"
       style={{
-        borderColor: selected ? "#2ED972" : "rgba(255,255,255,0.24)",
-        backgroundColor: selected ? "#0C6E39" : "#05070F",
+        ...OPTION_SHADOW,
+        borderColor: selected ? SURFACE.primary : SURFACE.border,
+        backgroundColor: selected ? SURFACE.selection : SURFACE.cardStrong,
       }}
       onPress={onPress}
     >
-      <Text className="text-[37px] font-semibold text-white">{label}</Text>
-      {description ? (
-        <Text className="mt-1 text-[26px] leading-9 text-white/85">{description}</Text>
-      ) : null}
+      <View className="flex-row items-start justify-between">
+        <View className="mr-4 flex-1">
+          <Text className="text-[24px] font-semibold leading-8" style={{ color: SURFACE.primaryDark }}>
+            {label}
+          </Text>
+          {description ? (
+            <Text className="mt-2 text-[16px] leading-7" style={{ color: SURFACE.secondary }}>
+              {description}
+            </Text>
+          ) : null}
+        </View>
+        <SelectionIndicator selected={selected} shape={indicator} />
+      </View>
     </Pressable>
   );
 }
 
-function InfoCard({ children }: { children: string }) {
+function InfoCard({
+  children,
+  title = "Why we ask",
+}: {
+  children: ReactNode;
+  title?: string;
+}) {
   return (
-    <View className="mt-5 rounded-2xl border border-white/10 bg-[#4C5569] px-5 py-5">
-      <Text className="text-[26px] leading-9 text-white/90">{children}</Text>
+    <View
+      className="rounded-[24px] border px-5 py-5"
+      style={{
+        borderColor: SURFACE.borderSoft,
+        backgroundColor: "#EEF7FF",
+      }}
+    >
+      <Text className="text-[15px] font-semibold" style={{ color: SURFACE.muted, letterSpacing: 1.8 }}>
+        {title.toUpperCase()}
+      </Text>
+      <Text className="mt-2 text-[17px] leading-7" style={{ color: SURFACE.secondary }}>
+        {children}
+      </Text>
+    </View>
+  );
+}
+
+function HeroBadge({ label, tint }: { label: string; tint: string }) {
+  return (
+    <View
+      className="mb-6 h-[92px] w-[92px] items-center justify-center self-center rounded-[28px]"
+      style={{ backgroundColor: tint }}
+    >
+      <Text className="text-[24px] font-extrabold tracking-[2px] text-white">{label}</Text>
+    </View>
+  );
+}
+
+function StepCard({
+  eyebrow,
+  title,
+  subtitle,
+  children,
+  footer,
+  centered = false,
+  badge,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  children?: ReactNode;
+  footer?: ReactNode;
+  centered?: boolean;
+  badge?: ReactNode;
+}) {
+  return (
+    <View className={centered ? "flex-1 justify-center py-6" : "py-4"}>
+      <View
+        className="rounded-[32px] border border-white/80 bg-white/80 px-6 py-7"
+        style={CARD_SHADOW}
+      >
+        <Text className="text-[16px] font-semibold" style={{ color: SURFACE.muted, letterSpacing: 2.4 }}>
+          {eyebrow}
+        </Text>
+        {badge}
+        <Text className="text-[40px] font-extrabold leading-[48px]" style={{ color: SURFACE.primaryDark }}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text className="mt-3 text-[19px] leading-8" style={{ color: SURFACE.secondary }}>
+            {subtitle}
+          </Text>
+        ) : null}
+        {children ? <View className="mt-8">{children}</View> : null}
+      </View>
+      {footer ? <View className="mt-6">{footer}</View> : null}
     </View>
   );
 }
@@ -165,7 +297,6 @@ export default function OnboardingScreen() {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<OnboardingAnswers>({
-    region: null,
     firstName: "",
     direction: null,
     mainGoal: null,
@@ -180,15 +311,14 @@ export default function OnboardingScreen() {
   });
 
   const currentStep = FLOW_STEPS[stepIndex];
-  const currentName = answers.firstName.trim() || "friend";
+  const trimmedName = answers.firstName.trim();
+  const currentName = trimmedName ? trimmedName.split(/\s+/)[0] : "friend";
   const parsedDate = useMemo(() => parseIsoDate(answers.dateOfBirth), [answers.dateOfBirth]);
   const age = useMemo(() => (parsedDate ? calculateAge(parsedDate) : null), [parsedDate]);
   const isLastStep = stepIndex === FLOW_STEPS.length - 1;
 
   const isCurrentStepValid = useMemo(() => {
     switch (currentStep) {
-      case "region":
-        return answers.region !== null;
       case "first_name":
         return answers.firstName.trim().length > 0;
       case "direction":
@@ -284,265 +414,237 @@ export default function OnboardingScreen() {
 
   const renderStep = () => {
     switch (currentStep) {
-      case "region":
-        return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What is your region?
-            </Text>
-            <Text className="mt-4 text-[28px] leading-10 text-white/90">
-              We&apos;ll use this to show the most relevant food search results for your region.
-            </Text>
-
-            <View className="mt-12">
-              <OptionCard
-                label="India"
-                selected={answers.region === "India"}
-                onPress={() => setAnswers((prev) => ({ ...prev, region: "India" }))}
-              />
-              <OptionCard
-                label="Other"
-                selected={answers.region === "Other"}
-                onPress={() => setAnswers((prev) => ({ ...prev, region: "Other" }))}
-              />
-            </View>
-          </>
-        );
-
       case "first_name":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              Hi! What&apos;s your first name?
-            </Text>
-            <Text className="mt-4 text-[28px] leading-10 text-white/90">
-              We&apos;ll use it to personalize the NutriMed app to you.
-            </Text>
-
-            <TextInput
-              className="mt-12 h-20 rounded-2xl border border-white/20 bg-[#05070F] px-5 text-[30px] text-white"
-              placeholder="Enter first name"
-              placeholderTextColor="rgba(255,255,255,0.55)"
-              value={answers.firstName}
-              onChangeText={(value) => setAnswers((prev) => ({ ...prev, firstName: value }))}
-              maxLength={40}
-              returnKeyType="done"
-            />
-
-            <Text className="mt-4 text-[22px] text-white/60">
-              Your first name is private and only visible to you.
-            </Text>
-
-            <Pressable className="mt-12 items-center" onPress={skipFirstName}>
-              <Text className="text-[35px] font-semibold text-[#2ED972]">Skip</Text>
-            </Pressable>
-          </>
+          <StepCard
+            eyebrow="PROFILE"
+            title="Your full name"
+            subtitle="Private and only visible to you."
+            centered
+            footer={
+              <Pressable
+                className="items-center self-center rounded-full bg-white/70 px-5 py-3"
+                onPress={skipFirstName}
+              >
+                <Text className="text-[18px] font-semibold" style={{ color: "#4E7CAB" }}>
+                  Skip for now
+                </Text>
+              </Pressable>
+            }
+          >
+            <View
+              className="rounded-[28px] border px-5 py-4"
+              style={{
+                borderColor: SURFACE.border,
+                backgroundColor: SURFACE.cardStrong,
+              }}
+            >
+              <Text className="text-[15px] font-semibold" style={{ color: SURFACE.muted, letterSpacing: 1.8 }}>
+                NAME
+              </Text>
+              <TextInput
+                className="mt-3 h-14 text-[25px] font-semibold"
+                style={{ color: SURFACE.primaryDark }}
+                placeholder="Enter full name"
+                placeholderTextColor="#9FB6CC"
+                value={answers.firstName}
+                onChangeText={(value) => setAnswers((prev) => ({ ...prev, firstName: value }))}
+                maxLength={40}
+                returnKeyType="done"
+                autoCapitalize="words"
+                autoCorrect={false}
+                textContentType="name"
+                selectionColor={SURFACE.primary}
+              />
+            </View>
+          </StepCard>
         );
 
       case "welcome":
         return (
-          <>
-            <View className="mt-4 h-[180px] w-[180px] items-center justify-center self-center rounded-[44px] bg-[#0D7C42]">
-              <Text className="text-[48px] font-extrabold text-white">HI</Text>
-            </View>
-
-            <Text className="mt-8 text-[56px] font-extrabold leading-[66px] text-white">
-              Nice to meet you, {currentName}
-            </Text>
-            <Text className="mt-2 text-[56px] font-extrabold leading-[66px] text-[#2ED972]">
-              Welcome to NutriMed!
-            </Text>
-
-            <Text className="mt-7 text-[31px] leading-[42px] text-white/90">
-              To get started, we&apos;ll ask a few quick questions.
-            </Text>
-
-            <InfoCard>
-              Your answers help us understand your goals so we can personalize the app for you.
+          <StepCard
+            eyebrow="WELCOME"
+            title={`Nice to meet you, ${currentName}`}
+            subtitle="We'll ask a few quick questions to personalize NutriMed for you."
+            centered
+            badge={<HeroBadge label="HI" tint="#65B6FF" />}
+          >
+            <InfoCard title="Quick setup">
+              Your answers help us tailor goals, daily targets, and the guidance you see in the
+              app.
             </InfoCard>
-          </>
+          </StepCard>
         );
 
       case "direction":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              I&apos;m here to:
-            </Text>
-
-            <View className="mt-12">
-              <OptionCard
-                label="Lose weight"
-                selected={answers.direction === "lose_weight"}
-                onPress={() => setAnswers((prev) => ({ ...prev, direction: "lose_weight" }))}
-              />
-              <OptionCard
-                label="Maintain my weight"
-                selected={answers.direction === "maintain_weight"}
-                onPress={() =>
-                  setAnswers((prev) => ({ ...prev, direction: "maintain_weight" }))
-                }
-              />
-              <OptionCard
-                label="Work that out"
-                selected={answers.direction === "work_that_out"}
-                onPress={() => setAnswers((prev) => ({ ...prev, direction: "work_that_out" }))}
-              />
-            </View>
-          </>
+          <StepCard
+            eyebrow="GOAL"
+            title="What brings you here?"
+            subtitle="Pick the option that feels closest right now."
+          >
+            <OptionCard
+              label="Lose weight"
+              selected={answers.direction === "lose_weight"}
+              onPress={() => setAnswers((prev) => ({ ...prev, direction: "lose_weight" }))}
+            />
+            <OptionCard
+              label="Maintain my weight"
+              selected={answers.direction === "maintain_weight"}
+              onPress={() => setAnswers((prev) => ({ ...prev, direction: "maintain_weight" }))}
+            />
+            <OptionCard
+              label="Work that out"
+              selected={answers.direction === "work_that_out"}
+              onPress={() => setAnswers((prev) => ({ ...prev, direction: "work_that_out" }))}
+            />
+          </StepCard>
         );
 
       case "goals_intro":
         return (
-          <>
-            <View className="mt-4 h-[180px] w-[180px] items-center justify-center self-center rounded-[44px] bg-[#45516B]">
-              <Text className="text-[44px] font-extrabold text-white">GOAL</Text>
-            </View>
-
-            <Text className="mt-8 text-[56px] font-extrabold leading-[66px] text-white">
-              Ok {currentName}, let&apos;s start with your goals
-            </Text>
-
-            <Text className="mt-6 text-[30px] leading-[42px] text-white/90">
-              Most people have more than one reason for wanting to make a change, and more than
-              one challenge that&apos;s made it hard in the past.
-            </Text>
-            <Text className="mt-5 text-[30px] leading-[42px] text-white/90">
-              We want to understand your broader goals and what&apos;s getting in the way.
-            </Text>
-
-            <InfoCard>
-              Your answers will help us tailor the content and tips you see in the app.
+          <StepCard
+            eyebrow="GOALS"
+            title={`Let's understand your goals, ${currentName}`}
+            subtitle="A few quick answers help us tailor the tips and content you see every day."
+            centered
+            badge={<HeroBadge label="GOAL" tint="#89AEE0" />}
+          >
+            <InfoCard title="Up next">
+              We'll ask about your main goal and what usually gets in the way so the plan feels
+              more personal.
             </InfoCard>
-          </>
+          </StepCard>
         );
 
       case "main_goal":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What is your main health goal?
-            </Text>
+          <StepCard
+            eyebrow="HEALTH"
+            title="Your main health goal"
+            subtitle="Choose the outcome that matters most to you right now."
+          >
+            <OptionCard
+              label="Understand my food intake"
+              selected={answers.mainGoal === "understand_food"}
+              onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "understand_food" }))}
+            />
+            <OptionCard
+              label="Manage a medical condition"
+              selected={answers.mainGoal === "manage_condition"}
+              onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "manage_condition" }))}
+            />
+            <OptionCard
+              label="Improve my overall health"
+              selected={answers.mainGoal === "improve_health"}
+              onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "improve_health" }))}
+            />
+            <OptionCard
+              label="Improve my emotional wellbeing"
+              selected={answers.mainGoal === "improve_emotional_wellbeing"}
+              onPress={() =>
+                setAnswers((prev) => ({ ...prev, mainGoal: "improve_emotional_wellbeing" }))
+              }
+            />
+            <OptionCard
+              label="Other"
+              selected={answers.mainGoal === "other"}
+              onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "other" }))}
+            />
 
-            <View className="mt-8">
-              <OptionCard
-                label="Understand my food intake"
-                selected={answers.mainGoal === "understand_food"}
-                onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "understand_food" }))}
-              />
-              <OptionCard
-                label="Manage a medical condition"
-                selected={answers.mainGoal === "manage_condition"}
-                onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "manage_condition" }))}
-              />
-              <OptionCard
-                label="Improve my overall health"
-                selected={answers.mainGoal === "improve_health"}
-                onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "improve_health" }))}
-              />
-              <OptionCard
-                label="Improve my emotional wellbeing"
-                selected={answers.mainGoal === "improve_emotional_wellbeing"}
-                onPress={() =>
-                  setAnswers((prev) => ({ ...prev, mainGoal: "improve_emotional_wellbeing" }))
-                }
-              />
-              <OptionCard
-                label="Other"
-                selected={answers.mainGoal === "other"}
-                onPress={() => setAnswers((prev) => ({ ...prev, mainGoal: "other" }))}
-              />
+            <View className="mt-2">
+              <InfoCard title="Why this matters">
+                This helps us understand why you're here so the experience feels more relevant
+                from the start.
+              </InfoCard>
             </View>
-
-            <InfoCard>
-              This helps us understand why you&apos;re here, so we can support you more personally.
-            </InfoCard>
-          </>
+          </StepCard>
         );
 
       case "challenge":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What&apos;s made managing your weight hard in the past?
-            </Text>
-            <Text className="mt-5 text-[35px] font-semibold leading-[45px] text-[#FF7B39]">
-              Select up to 3 that are most relevant for you.
-            </Text>
+          <StepCard
+            eyebrow="CHALLENGES"
+            title="What gets in the way?"
+            subtitle="Choose up to 3 that feel most true for you today."
+          >
+            {CHALLENGE_OPTIONS.map((option) => {
+              const selected = answers.challenges.includes(option);
 
-            <View className="mt-8">
-              {CHALLENGE_OPTIONS.map((option) => {
-                const selected = answers.challenges.includes(option);
+              return (
+                <OptionCard
+                  key={option}
+                  label={option}
+                  selected={selected}
+                  indicator="square"
+                  onPress={() => toggleChallenge(option)}
+                />
+              );
+            })}
 
-                return (
-                  <Pressable
-                    key={option}
-                    className="mb-4 flex-row items-center justify-between rounded-2xl border px-5 py-5"
-                    style={{
-                      borderColor: selected ? "#2ED972" : "rgba(255,255,255,0.24)",
-                      backgroundColor: selected ? "#0C6E39" : "#05070F",
-                    }}
-                    onPress={() => toggleChallenge(option)}
-                  >
-                    <Text className="mr-4 flex-1 text-[34px] font-semibold text-white">{option}</Text>
-                    <View
-                      className="h-8 w-8 rounded-md border"
-                      style={{
-                        borderColor: selected ? "#2ED972" : "rgba(255,255,255,0.62)",
-                        backgroundColor: selected ? "#2ED972" : "transparent",
-                      }}
-                    />
-                  </Pressable>
-                );
-              })}
+            <View className="mt-2">
+              <InfoCard title="Selection tip">
+                Pick the most important three so we can focus on the patterns that matter most.
+              </InfoCard>
             </View>
-          </>
+          </StepCard>
         );
 
       case "rdi_intro":
         return (
-          <>
-            <View className="mt-4 h-[180px] w-[180px] items-center justify-center self-center rounded-[44px] bg-[#204A4D]">
-              <Text className="text-[44px] font-extrabold text-white">RDI</Text>
-            </View>
-
-            <Text className="mt-8 text-[56px] font-extrabold leading-[66px] text-white">
-              Let&apos;s calculate your RDI
-            </Text>
-
-            <Text className="mt-6 text-[30px] leading-[42px] text-white/90">
-              Your RDI (Recommended Daily Intake) is your personal daily calorie target. It tells
-              you how many calories you need each day based on your goal.
-            </Text>
-
-            <View className="my-8 h-[1px] bg-white/25" />
-
-            <Text className="text-[30px] leading-[42px] text-white/90">
-              To calculate your RDI, we&apos;ll ask a few quick questions about your profile details,
-              including height, weight, date of birth, sex and activity level.
-            </Text>
-          </>
+          <StepCard
+            eyebrow="RDI"
+            title="Let's calculate your RDI"
+            subtitle="Recommended Daily Intake is your personal daily calorie target."
+            centered
+            badge={<HeroBadge label="RDI" tint="#5AAFC1" />}
+          >
+            <InfoCard title="We'll use">
+              Your height, weight, date of birth, sex, and activity level to estimate a helpful
+              starting target.
+            </InfoCard>
+          </StepCard>
         );
 
       case "height":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What is your height?
-            </Text>
-
-            <View className="mt-10 flex-row gap-3">
-              <TextInput
-                className="h-20 flex-1 rounded-2xl border border-white/20 bg-[#05070F] px-5 text-[34px] text-white"
-                placeholder={answers.heightUnit === "cm" ? "170" : "5.7"}
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                keyboardType="decimal-pad"
-                value={answers.height}
-                onChangeText={(value) => setAnswers((prev) => ({ ...prev, height: value }))}
-              />
+          <StepCard
+            eyebrow="PROFILE"
+            title="Your height"
+            subtitle="Use the unit that feels easiest for you."
+          >
+            <View className="flex-row gap-3">
+              <View
+                className="flex-1 rounded-[28px] border px-5 py-4"
+                style={{
+                  borderColor: SURFACE.border,
+                  backgroundColor: SURFACE.cardStrong,
+                }}
+              >
+                <Text
+                  className="text-[15px] font-semibold"
+                  style={{ color: SURFACE.muted, letterSpacing: 1.8 }}
+                >
+                  HEIGHT
+                </Text>
+                <TextInput
+                  className="mt-3 h-14 text-[25px] font-semibold"
+                  style={{ color: SURFACE.primaryDark }}
+                  placeholder={answers.heightUnit === "cm" ? "170" : "5.7"}
+                  placeholderTextColor="#9FB6CC"
+                  keyboardType="decimal-pad"
+                  value={answers.height}
+                  onChangeText={(value) => setAnswers((prev) => ({ ...prev, height: value }))}
+                  selectionColor={SURFACE.primary}
+                />
+              </View>
 
               <Pressable
-                className="h-20 min-w-[130px] items-center justify-center rounded-2xl bg-[#424A5C] px-4"
+                className="min-w-[110px] items-center justify-center rounded-[24px] border px-4"
+                style={{
+                  borderColor: SURFACE.border,
+                  backgroundColor: SURFACE.selectionSoft,
+                }}
                 onPress={() =>
                   setAnswers((prev) => ({
                     ...prev,
@@ -550,33 +652,53 @@ export default function OnboardingScreen() {
                   }))
                 }
               >
-                <Text className="text-[31px] font-semibold text-white">{answers.heightUnit}</Text>
+                <Text className="text-[22px] font-semibold" style={{ color: SURFACE.primaryDark }}>
+                  {answers.heightUnit}
+                </Text>
               </Pressable>
             </View>
-
-            <InfoCard>Your height plays a role in how much energy your body uses each day.</InfoCard>
-          </>
+            <View className="mt-4">
+              <InfoCard>Your height plays a role in how much energy your body uses each day.</InfoCard>
+            </View>
+          </StepCard>
         );
 
       case "weight":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What is your current weight?
-            </Text>
-
-            <View className="mt-10 flex-row gap-3">
-              <TextInput
-                className="h-20 flex-1 rounded-2xl border border-white/20 bg-[#05070F] px-5 text-[34px] text-white"
-                placeholder="60"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                keyboardType="decimal-pad"
-                value={answers.weight}
-                onChangeText={(value) => setAnswers((prev) => ({ ...prev, weight: value }))}
-              />
+          <StepCard
+            eyebrow="PROFILE"
+            title="Your current weight"
+            subtitle="We'll use this as part of your calorie estimate."
+          >
+            <View className="flex-row gap-3">
+              <View
+                className="flex-1 rounded-[28px] border px-5 py-4"
+                style={{
+                  borderColor: SURFACE.border,
+                  backgroundColor: SURFACE.cardStrong,
+                }}
+              >
+                <Text className="text-[15px] font-semibold" style={{ color: SURFACE.muted, letterSpacing: 1.8 }}>
+                  WEIGHT
+                </Text>
+                <TextInput
+                  className="mt-3 h-14 text-[25px] font-semibold"
+                  style={{ color: SURFACE.primaryDark }}
+                  placeholder="60"
+                  placeholderTextColor="#9FB6CC"
+                  keyboardType="decimal-pad"
+                  value={answers.weight}
+                  onChangeText={(value) => setAnswers((prev) => ({ ...prev, weight: value }))}
+                  selectionColor={SURFACE.primary}
+                />
+              </View>
 
               <Pressable
-                className="h-20 min-w-[130px] items-center justify-center rounded-2xl bg-[#424A5C] px-4"
+                className="min-w-[110px] items-center justify-center rounded-[24px] border px-4"
+                style={{
+                  borderColor: SURFACE.border,
+                  backgroundColor: SURFACE.selectionSoft,
+                }}
                 onPress={() =>
                   setAnswers((prev) => ({
                     ...prev,
@@ -584,97 +706,103 @@ export default function OnboardingScreen() {
                   }))
                 }
               >
-                <Text className="text-[31px] font-semibold text-white">{answers.weightUnit}</Text>
+                <Text className="text-[22px] font-semibold" style={{ color: SURFACE.primaryDark }}>
+                  {answers.weightUnit}
+                </Text>
               </Pressable>
             </View>
 
-            <InfoCard>
-              This helps us calculate a calorie target for weight goals based on where you&apos;re
-              starting from.
-            </InfoCard>
-          </>
+            <View className="mt-4">
+              <InfoCard>
+                This helps us calculate a calorie target for weight goals based on where you're
+                starting from.
+              </InfoCard>
+            </View>
+          </StepCard>
         );
 
       case "dob":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What is your date of birth?
-            </Text>
-
-            <TextInput
-              className="mt-10 h-20 rounded-2xl border border-white/20 bg-[#05070F] px-5 text-[34px] text-white"
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              keyboardType="numbers-and-punctuation"
-              value={answers.dateOfBirth}
-              onChangeText={(value) =>
-                setAnswers((prev) => ({ ...prev, dateOfBirth: value.trim() }))
-              }
-              maxLength={10}
-            />
-
-            {age !== null ? (
-              <Text className="mt-7 text-[39px] text-white">
-                You are: <Text className="font-bold">{age} years old</Text>
+          <StepCard
+            eyebrow="PROFILE"
+            title="Your date of birth"
+            subtitle="Use the format YYYY-MM-DD."
+          >
+            <View
+              className="rounded-[28px] border px-5 py-4"
+              style={{
+                borderColor: SURFACE.border,
+                backgroundColor: SURFACE.cardStrong,
+              }}
+            >
+              <Text className="text-[15px] font-semibold" style={{ color: SURFACE.muted, letterSpacing: 1.8 }}>
+                DATE OF BIRTH
               </Text>
-            ) : (
-              <Text className="mt-7 text-[26px] text-white/70">
-                Enter your birth date in format YYYY-MM-DD.
-              </Text>
-            )}
+              <TextInput
+                className="mt-3 h-14 text-[25px] font-semibold"
+                style={{ color: SURFACE.primaryDark }}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9FB6CC"
+                keyboardType="numbers-and-punctuation"
+                value={answers.dateOfBirth}
+                onChangeText={(value) =>
+                  setAnswers((prev) => ({ ...prev, dateOfBirth: value.trim() }))
+                }
+                maxLength={10}
+                selectionColor={SURFACE.primary}
+              />
+            </View>
 
-            <InfoCard>Your age affects how much energy your body needs each day.</InfoCard>
-          </>
+            <View className="mt-4">
+              {age !== null ? (
+                <InfoCard title="Age detected">You are {age} years old.</InfoCard>
+              ) : (
+                <InfoCard title="Format example">
+                  Enter your birth date as year-month-day, like 1998-04-21.
+                </InfoCard>
+              )}
+            </View>
+          </StepCard>
         );
 
       case "sex":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              What is your sex?
-            </Text>
+          <StepCard
+            eyebrow="PROFILE"
+            title="Your sex"
+            subtitle="This helps make your starting calorie estimate more accurate."
+          >
+            <OptionCard
+              label="Female"
+              selected={answers.sex === "female"}
+              onPress={() => setAnswers((prev) => ({ ...prev, sex: "female" }))}
+            />
+            <OptionCard
+              label="Male"
+              selected={answers.sex === "male"}
+              onPress={() => setAnswers((prev) => ({ ...prev, sex: "male" }))}
+            />
 
-            <View className="mt-12">
-              <OptionCard
-                label="Female"
-                selected={answers.sex === "female"}
-                onPress={() => setAnswers((prev) => ({ ...prev, sex: "female" }))}
-              />
-              <OptionCard
-                label="Male"
-                selected={answers.sex === "male"}
-                onPress={() => setAnswers((prev) => ({ ...prev, sex: "male" }))}
-              />
-            </View>
-
-            <Pressable className="items-center">
-              <Text className="text-[30px] text-white/75 underline">Info for gender-diverse individuals</Text>
+            <Pressable className="mt-3 items-center self-center rounded-full bg-white/70 px-4 py-3">
+              <Text className="text-[16px] font-medium" style={{ color: "#4E7CAB" }}>
+                Info for gender-diverse individuals
+              </Text>
             </Pressable>
-
-            <InfoCard>Your sex affects how much energy your body needs each day.</InfoCard>
-          </>
+          </StepCard>
         );
 
       case "activity":
         return (
-          <>
-            <Text className="text-[56px] font-extrabold leading-[66px] text-white">
-              Which best describes your average daily activity level?
-            </Text>
+          <StepCard
+            eyebrow="LIFESTYLE"
+            title="Your activity level"
+            subtitle="Choose the option that best matches an average day."
+          >
+            <InfoCard title="Tip">
+              If you're unsure, choose the lower option to avoid overestimating calorie needs.
+            </InfoCard>
 
-            <Text className="mt-4 text-[28px] leading-10 text-white/90">
-              Your activity level helps us determine how many calories your body needs each day.
-            </Text>
-
-            <View className="mt-6 rounded-2xl border border-[#8EB4FF]/50 bg-[#2A4E8C] px-5 py-5">
-              <Text className="text-[29px] font-semibold text-white">Tip</Text>
-              <Text className="mt-2 text-[27px] leading-10 text-white/90">
-                If you&apos;re unsure, choose the lower option to avoid overestimating calorie needs.
-              </Text>
-            </View>
-
-            <View className="mt-7">
+            <View className="mt-5">
               <OptionCard
                 label="Low"
                 description="Most of the day sitting and light exercise 1-2 times per week."
@@ -700,13 +828,49 @@ export default function OnboardingScreen() {
                 onPress={() => setAnswers((prev) => ({ ...prev, activityLevel: "very_high" }))}
               />
             </View>
-          </>
+          </StepCard>
         );
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#030A23]">
+    <SafeAreaView className="flex-1" style={{ backgroundColor: SURFACE.background }}>
+      <View
+        pointerEvents="none"
+        className="absolute"
+        style={{
+          top: -110,
+          right: -40,
+          height: 300,
+          width: 300,
+          borderRadius: 150,
+          backgroundColor: "rgba(151, 211, 255, 0.72)",
+        }}
+      />
+      <View
+        pointerEvents="none"
+        className="absolute"
+        style={{
+          top: 180,
+          left: -120,
+          height: 320,
+          width: 320,
+          borderRadius: 160,
+          backgroundColor: "rgba(255, 255, 255, 0.92)",
+        }}
+      />
+      <View
+        pointerEvents="none"
+        className="absolute"
+        style={{
+          right: -90,
+          bottom: 90,
+          height: 280,
+          width: 280,
+          borderRadius: 140,
+          backgroundColor: "rgba(119, 190, 255, 0.4)",
+        }}
+      />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -714,10 +878,13 @@ export default function OnboardingScreen() {
         <View className="px-5 pb-3 pt-2">
           <View className="flex-row items-center gap-3">
             <Pressable
-              className="h-11 w-11 items-center justify-center rounded-full bg-white/15"
+              className="h-11 w-11 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.72)" }}
               onPress={goBack}
             >
-              <Text className="text-[26px] font-semibold text-white">{"<"}</Text>
+              <Text className="text-[26px] font-semibold" style={{ color: "#45729E" }}>
+                {"<"}
+              </Text>
             </Pressable>
 
             <View className="flex-1 flex-row items-center gap-1.5">
@@ -727,7 +894,9 @@ export default function OnboardingScreen() {
                   <View
                     key={index}
                     className="h-2 flex-1 rounded-full"
-                    style={{ backgroundColor: isActive ? "#2ED972" : "#5B6478" }}
+                    style={{
+                      backgroundColor: isActive ? "#4AA8FF" : SURFACE.progressInactive,
+                    }}
                   />
                 );
               })}
@@ -737,25 +906,36 @@ export default function OnboardingScreen() {
 
         <ScrollView
           className="flex-1 px-6"
-          contentContainerClassName="pb-10"
+          contentContainerStyle={{
+            paddingBottom: 40,
+            flexGrow: 1,
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {renderStep()}
         </ScrollView>
 
-        <View className="border-t border-white/10 bg-[#030A23] px-6 pb-6 pt-4">
+        <View
+          className="border-t px-6 pb-6 pt-4"
+          style={{
+            borderTopColor: "rgba(121, 170, 214, 0.22)",
+            backgroundColor: SURFACE.footer,
+          }}
+        >
           <Pressable
             className="h-16 items-center justify-center rounded-2xl"
             style={{
-              backgroundColor: isCurrentStepValid ? "#2ED972" : "#2D3448",
+              backgroundColor: isCurrentStepValid ? SURFACE.primary : "#C7DCEE",
             }}
             disabled={!isCurrentStepValid}
             onPress={goNext}
           >
             <Text
               className="text-[28px] font-bold"
-              style={{ color: isCurrentStepValid ? "#052540" : "rgba(255,255,255,0.55)" }}
+              style={{
+                color: isCurrentStepValid ? "#FFFFFF" : "#6B88A5",
+              }}
             >
               {ctaLabel}
             </Text>

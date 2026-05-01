@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import { SCREEN_COLORS } from "./ScreenBackground";
 
 interface HeaderProps {
   notificationCount?: number;
@@ -43,7 +44,7 @@ export function Header({
             width: 42,
             height: 42,
             borderRadius: 21,
-            backgroundColor: "#1E2A45",
+            backgroundColor: SCREEN_COLORS.iconBg,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -57,7 +58,7 @@ export function Header({
         {/* Bell with badge */}
         <TouchableOpacity onPress={onNotificationPress} activeOpacity={0.7}>
           <View>
-            <Ionicons name="notifications-outline" size={26} color="#E2E8F0" />
+          <Ionicons name="notifications-outline" size={26} color={SCREEN_COLORS.primaryDark} />
             {notificationCount > 0 && (
               <View
                 style={{
@@ -84,11 +85,11 @@ export function Header({
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onSearchPress} activeOpacity={0.7}>
-          <Ionicons name="search-outline" size={26} color="#E2E8F0" />
+          <Ionicons name="search-outline" size={26} color={SCREEN_COLORS.primaryDark} />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleCalendarPress} activeOpacity={0.7}>
-          <Ionicons name="calendar-outline" size={26} color="#E2E8F0" />
+          <Ionicons name="calendar-outline" size={26} color={SCREEN_COLORS.primaryDark} />
         </TouchableOpacity>
       </View>
     </View>

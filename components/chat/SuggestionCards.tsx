@@ -1,5 +1,6 @@
 import { View, Text, ScrollView } from "react-native";
 import { SuggestionCard } from "../../types/chat";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 type Category = SuggestionCard["category"];
 
@@ -28,7 +29,7 @@ function Card({ card }: { card: SuggestionCard }) {
       style={{
         width: 220,
         marginRight: 12,
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
         borderRadius: 16,
         overflow: "hidden",
         borderWidth: 1,
@@ -69,7 +70,7 @@ function Card({ card }: { card: SuggestionCard }) {
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  color: "#F1F5F9",
+                  color: SCREEN_COLORS.text,
                   fontWeight: "600",
                   fontSize: 12,
                 }}
@@ -78,7 +79,7 @@ function Card({ card }: { card: SuggestionCard }) {
               </Text>
               <Text
                 style={{
-                  color: "#9CA3AF",
+                  color: SCREEN_COLORS.textMuted,
                   fontSize: 11,
                   lineHeight: 15,
                   marginTop: 2,
@@ -107,12 +108,14 @@ export function SuggestionCards({ intro, cards }: Props) {
         style={{
           marginHorizontal: 16,
           marginBottom: 10,
-          backgroundColor: "#0D1526",
+          backgroundColor: SCREEN_COLORS.card,
+          borderWidth: 1,
+          borderColor: SCREEN_COLORS.border,
           borderRadius: 16,
           padding: 14,
         }}
       >
-        <Text style={{ color: "#F1F5F9", fontSize: 14, lineHeight: 21 }}>
+        <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, lineHeight: 21 }}>
           {intro}
         </Text>
       </View>

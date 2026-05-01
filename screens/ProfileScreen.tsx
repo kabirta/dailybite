@@ -1,4 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import {
+  type Auth,
+  onAuthStateChanged,
+  type User,
+} from 'firebase/auth';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -11,25 +23,28 @@ import {
   Switch,
   Text,
   View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { onAuthStateChanged, type Auth, type User } from "firebase/auth";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { auth as rawAuth } from "../src/config/firebase";
-import { signOutUser } from "../src/services/authService";
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { Header } from '../components/Header';
+import {
+  SCREEN_COLORS,
+  ScreenBackground,
+} from '../components/ScreenBackground';
+import { auth as rawAuth } from '../src/config/firebase';
+import { signOutUser } from '../src/services/authService';
 
 const AVATAR_STORAGE_KEY = "@healthbangla_avatar_uri";
-const CARD = "#0D1526";
-const CARD_ALT = "#111B31";
-const BG = "#030A23";
-const TEXT = "#F8FAFC";
-const MUTED = "#93A4BF";
-const BORDER = "rgba(255,255,255,0.08)";
-const ACCENT = "#2ED972";
+const CARD = SCREEN_COLORS.card;
+const CARD_ALT = SCREEN_COLORS.card;
+const BG = SCREEN_COLORS.background;
+const TEXT = SCREEN_COLORS.text;
+const MUTED = SCREEN_COLORS.textMuted;
+const BORDER = SCREEN_COLORS.border;
+const ACCENT = SCREEN_COLORS.primary;
 const auth = rawAuth as Auth;
 
 const PROFILE_PLACEHOLDERS = {
@@ -432,27 +447,31 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <ScreenBackground>
+      <Header />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.heroShell}>
           <View style={styles.heroGlow} />
+          {false ? (
           <View style={styles.topBar}>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.back()}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
             >
-              <Ionicons name="arrow-back" size={20} color={TEXT} />
+              <Ionicons name="arrow-back" size={20} color={SCREEN_COLORS.primaryDark} />
             </Pressable>
 
             <Text style={styles.topBarTitle}>Profile</Text>
 
             <Pressable style={styles.iconButton}>
-              <Ionicons name="create-outline" size={20} color="#C7D2E5" />
+              <Ionicons name="create-outline" size={20} color={SCREEN_COLORS.primaryDark} />
             </Pressable>
           </View>
+          ) : null}
 
           <View style={styles.heroCard}>
             <View style={styles.heroPatternOne} />
@@ -651,14 +670,9 @@ export default function ProfileScreen() {
             description="Unlock advanced insights and tailored plans."
             value="Free"
             tint="#F8C44F"
+            onPress={() => router.push("/premium-plan")}
           />
-          <SettingRow
-            icon="mail-outline"
-            label="Account Email"
-            value={email}
-            tint="#22C55E"
-            rightNode={<Ionicons name="copy-outline" size={16} color="#5D7193" />}
-          />
+         
           <SettingRow
             icon="help-circle-outline"
             label="Help and Support"
@@ -688,6 +702,7 @@ export default function ProfileScreen() {
 
         <Text style={styles.versionText}>HealthBangla v1.0.0</Text>
       </ScrollView>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }
@@ -711,7 +726,7 @@ const styles = StyleSheet.create({
     height: 220,
     width: 220,
     borderRadius: 110,
-    backgroundColor: "rgba(46,217,114,0.10)",
+    backgroundColor: "rgba(223,243,255,0.55)",
   },
   topBar: {
     flexDirection: "row",
@@ -731,7 +746,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: SCREEN_COLORS.iconBg,
     borderWidth: 1,
     borderColor: BORDER,
   },
@@ -740,7 +755,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     overflow: "hidden",
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: CARD_ALT,
     paddingHorizontal: 20,
     paddingTop: 26,
@@ -776,9 +791,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 54,
-    backgroundColor: "rgba(46,217,114,0.20)",
+    backgroundColor: SCREEN_COLORS.iconBg,
     borderWidth: 1,
-    borderColor: "rgba(46,217,114,0.35)",
+    borderColor: SCREEN_COLORS.border,
   },
   avatarCore: {
     height: 94,
@@ -786,7 +801,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 47,
-    backgroundColor: "#18243F",
+    backgroundColor: "#ffffff",
     overflow: "hidden",
   },
   avatarImage: {
@@ -794,7 +809,7 @@ const styles = StyleSheet.create({
     width: 94,
   },
   avatarInitials: {
-    color: TEXT,
+    color: SCREEN_COLORS.primaryDark,
     fontSize: 30,
     fontWeight: "800",
     letterSpacing: 1.5,
@@ -836,14 +851,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(3,10,35,0.42)",
+    backgroundColor: SCREEN_COLORS.cardSoft,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: BORDER,
   },
   pillText: {
-    color: "#D7E1F0",
+    color: SCREEN_COLORS.text,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -856,7 +871,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     borderRadius: 20,
-    backgroundColor: "rgba(3,10,35,0.42)",
+    backgroundColor: SCREEN_COLORS.cardSoft,
     paddingHorizontal: 10,
     paddingVertical: 16,
     borderWidth: 1,
@@ -1058,14 +1073,14 @@ const styles = StyleSheet.create({
   accountMetaPill: {
     flex: 1,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    backgroundColor: SCREEN_COLORS.cardSoft,
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: SCREEN_COLORS.border,
   },
   accountMetaLabel: {
-    color: "#7F92B2",
+    color: SCREEN_COLORS.textMuted,
     fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -1116,7 +1131,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#1B2944",
+    backgroundColor: "#d8ecff",
     overflow: "hidden",
   },
   progressFill: {
@@ -1138,7 +1153,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.05)",
+    borderBottomColor: SCREEN_COLORS.border,
   },
   settingRowPressed: {
     opacity: 0.88,
@@ -1169,7 +1184,7 @@ const styles = StyleSheet.create({
   },
   settingDescription: {
     marginTop: 3,
-    color: "#A9B7CD",
+    color: SCREEN_COLORS.textMuted,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -1201,7 +1216,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     marginTop: 18,
-    color: "#42516D",
+    color: SCREEN_COLORS.textMuted,
     fontSize: 11,
     textAlign: "center",
   },

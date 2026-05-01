@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { SCREEN_COLORS } from "./ScreenBackground";
+
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 export interface MealSectionProps {
@@ -28,7 +30,9 @@ export function MealSection({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
+        borderWidth: 1,
+        borderColor: SCREEN_COLORS.border,
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 16,
@@ -41,12 +45,12 @@ export function MealSection({
         <Ionicons name={iconName} size={22} color={iconColor} />
         <View>
           <Text
-            style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 15 }}
+            style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 15 }}
           >
             {title}
           </Text>
           {caloriesLogged !== undefined && (
-            <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 1 }}>
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, marginTop: 1 }}>
               {caloriesLogged} cal
             </Text>
           )}
@@ -64,7 +68,7 @@ export function MealSection({
           width: 32,
           height: 32,
           borderRadius: 16,
-          backgroundColor: "#22C55E",
+          backgroundColor: SCREEN_COLORS.primary,
           alignItems: "center",
           justifyContent: "center",
         }}

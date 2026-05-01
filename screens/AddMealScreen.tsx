@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Header } from "../components/Header";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -52,21 +54,21 @@ function EmptyState({
           width: 72,
           height: 72,
           borderRadius: 36,
-          backgroundColor: "#0D1526",
+          backgroundColor: SCREEN_COLORS.iconBg,
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 16,
         }}
       >
-        <Ionicons name={icon} size={34} color="#374151" />
+        <Ionicons name={icon} size={34} color={SCREEN_COLORS.primary} />
       </View>
       <Text
-        style={{ color: "#9CA3AF", fontSize: 15, fontWeight: "600", marginBottom: 6 }}
+        style={{ color: SCREEN_COLORS.text, fontSize: 15, fontWeight: "600", marginBottom: 6 }}
       >
         {title}
       </Text>
       <Text
-        style={{ color: "#4B5563", fontSize: 13, textAlign: "center", maxWidth: 220, lineHeight: 19 }}
+        style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, textAlign: "center", maxWidth: 220, lineHeight: 19 }}
       >
         {subtitle}
       </Text>
@@ -87,7 +89,7 @@ function CookBookTab() {
         activeOpacity={0.8}
         style={{
           borderWidth: 1.5,
-          borderColor: "#22C55E",
+          borderColor: SCREEN_COLORS.primary,
           borderRadius: 12,
           paddingVertical: 14,
           alignItems: "center",
@@ -97,8 +99,8 @@ function CookBookTab() {
           marginBottom: 32,
         }}
       >
-        <Ionicons name="add" size={20} color="#22C55E" />
-        <Text style={{ color: "#22C55E", fontSize: 15, fontWeight: "700" }}>
+        <Ionicons name="add" size={20} color={SCREEN_COLORS.primary} />
+        <Text style={{ color: SCREEN_COLORS.primary, fontSize: 15, fontWeight: "700" }}>
           New Recipe
         </Text>
       </TouchableOpacity>
@@ -137,49 +139,49 @@ function RecipesTab() {
             flex: 1,
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.card,
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
             borderWidth: 1,
-            borderColor: "#1A2744",
+            borderColor: SCREEN_COLORS.border,
             gap: 8,
           }}
         >
-          <Ionicons name="search-outline" size={18} color="#6B7280" />
+          <Ionicons name="search-outline" size={18} color={SCREEN_COLORS.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search recipes..."
-            placeholderTextColor="#4B5563"
-            style={{ flex: 1, color: "#F1F5F9", fontSize: 14 }}
+            placeholderTextColor={SCREEN_COLORS.textMuted}
+            style={{ flex: 1, color: SCREEN_COLORS.text, fontSize: 14 }}
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#6B7280" />
+              <Ionicons name="close-circle" size={18} color={SCREEN_COLORS.textMuted} />
             </TouchableOpacity>
           )}
         </View>
         <TouchableOpacity
           style={{
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.card,
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: "#1A2744",
+            borderColor: SCREEN_COLORS.border,
             width: 44,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="options-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="options-outline" size={20} color={SCREEN_COLORS.textMuted} />
         </TouchableOpacity>
       </View>
 
       {/* Sort */}
       <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 14 }}>
         <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text style={{ color: "#9CA3AF", fontSize: 13 }}>Sort</Text>
-          <Ionicons name="chevron-down" size={14} color="#9CA3AF" />
+          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13 }}>Sort</Text>
+          <Ionicons name="chevron-down" size={14} color={SCREEN_COLORS.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -191,10 +193,10 @@ function RecipesTab() {
             activeOpacity={0.8}
             style={{
               width: (SCREEN_WIDTH - 32 - 12) / 2,
-              backgroundColor: "#0D1526",
+              backgroundColor: SCREEN_COLORS.card,
               borderRadius: 14,
               borderWidth: 1,
-              borderColor: "#1A2744",
+              borderColor: SCREEN_COLORS.border,
               overflow: "hidden",
             }}
           >
@@ -202,7 +204,7 @@ function RecipesTab() {
             <View
               style={{
                 height: 110,
-                backgroundColor: "#111C33",
+                backgroundColor: SCREEN_COLORS.cardSoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -228,7 +230,7 @@ function RecipesTab() {
               </View>
             </View>
             <View style={{ padding: 10 }}>
-              <Text style={{ color: "#F1F5F9", fontSize: 13, fontWeight: "600" }}>
+              <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, fontWeight: "600" }}>
                 {recipe.title}
               </Text>
             </View>
@@ -255,12 +257,12 @@ function FoodTab() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: "#0D1526",
+          backgroundColor: SCREEN_COLORS.card,
           borderRadius: 12,
           paddingHorizontal: 12,
           paddingVertical: 10,
           borderWidth: 1.5,
-          borderColor: focused ? "#22C55E" : "#1A2744",
+          borderColor: focused ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
           gap: 8,
           marginBottom: 24,
         }}
@@ -268,7 +270,7 @@ function FoodTab() {
         <Ionicons
           name="search-outline"
           size={18}
-          color={focused ? "#22C55E" : "#6B7280"}
+          color={focused ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted}
         />
         <TextInput
           value={query}
@@ -276,12 +278,12 @@ function FoodTab() {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Search for Food"
-          placeholderTextColor="#4B5563"
-          style={{ flex: 1, color: "#F1F5F9", fontSize: 14 }}
+          placeholderTextColor={SCREEN_COLORS.textMuted}
+          style={{ flex: 1, color: SCREEN_COLORS.text, fontSize: 14 }}
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery("")}>
-            <Ionicons name="close-circle" size={18} color="#6B7280" />
+            <Ionicons name="close-circle" size={18} color={SCREEN_COLORS.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -333,7 +335,7 @@ function RecentlyEatenTab({ meal }: { meal: string }) {
             <Ionicons name={section.icon} size={16} color={section.color} />
             <Text
               style={{
-                color: "#6B7280",
+                color: SCREEN_COLORS.textMuted,
                 fontSize: 11,
                 fontWeight: "700",
                 letterSpacing: 0.8,
@@ -344,15 +346,15 @@ function RecentlyEatenTab({ meal }: { meal: string }) {
           </View>
           <View
             style={{
-              backgroundColor: "#0D1526",
+              backgroundColor: SCREEN_COLORS.card,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "#1A2744",
+              borderColor: SCREEN_COLORS.border,
               paddingVertical: 20,
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#4B5563", fontSize: 13 }}>
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13 }}>
               No foods logged yet
             </Text>
           </View>
@@ -393,7 +395,7 @@ function SavedMealsTab() {
         activeOpacity={0.8}
         style={{
           borderWidth: 1.5,
-          borderColor: "#22C55E",
+          borderColor: SCREEN_COLORS.primary,
           borderRadius: 12,
           paddingVertical: 14,
           alignItems: "center",
@@ -403,8 +405,8 @@ function SavedMealsTab() {
           marginBottom: 32,
         }}
       >
-        <Ionicons name="add" size={20} color="#22C55E" />
-        <Text style={{ color: "#22C55E", fontSize: 15, fontWeight: "700" }}>
+        <Ionicons name="add" size={20} color={SCREEN_COLORS.primary} />
+        <Text style={{ color: SCREEN_COLORS.primary, fontSize: 15, fontWeight: "700" }}>
           New Saved Meal
         </Text>
       </TouchableOpacity>
@@ -443,7 +445,10 @@ export default function AddMealScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030A23" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }} edges={["top"]}>
+      <ScreenBackground>
+      <Header />
+      {false ? (<>
       {/* ── Header ── */}
       <View
         style={{
@@ -452,7 +457,7 @@ export default function AddMealScreen() {
           paddingHorizontal: 16,
           paddingVertical: 12,
           borderBottomWidth: 1,
-          borderBottomColor: "#0D1526",
+          borderBottomColor: SCREEN_COLORS.border,
         }}
       >
         <TouchableOpacity
@@ -461,24 +466,24 @@ export default function AddMealScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.iconBg,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="close" size={20} color="#9CA3AF" />
+          <Ionicons name="close" size={20} color={SCREEN_COLORS.primaryDark} />
         </TouchableOpacity>
 
         <View style={{ flex: 1, alignItems: "center" }}>
           <TouchableOpacity
             style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
           >
-            <Text style={{ color: "#F1F5F9", fontSize: 17, fontWeight: "700" }}>
+            <Text style={{ color: SCREEN_COLORS.text, fontSize: 17, fontWeight: "700" }}>
               {mealLabel}
             </Text>
-            <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+            <Ionicons name="chevron-down" size={16} color={SCREEN_COLORS.textMuted} />
           </TouchableOpacity>
-          <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 2 }}>
+          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
             {formatHeaderDate(today)}
           </Text>
         </View>
@@ -488,12 +493,14 @@ export default function AddMealScreen() {
       </View>
 
       {/* ── Tab Bar ── */}
+      </>) : null}
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{
           borderBottomWidth: 1,
-          borderBottomColor: "#0D1526",
+          borderBottomColor: SCREEN_COLORS.border,
           flexGrow: 0,
         }}
         contentContainerStyle={{ paddingHorizontal: 8 }}
@@ -507,12 +514,12 @@ export default function AddMealScreen() {
               paddingVertical: 12,
               borderBottomWidth: 2,
               borderBottomColor:
-                activeTab === index ? "#22C55E" : "transparent",
+                activeTab === index ? SCREEN_COLORS.primary : "transparent",
             }}
           >
             <Text
               style={{
-                color: activeTab === index ? "#22C55E" : "#6B7280",
+                color: activeTab === index ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted,
                 fontSize: 12,
                 fontWeight: "700",
                 letterSpacing: 0.5,
@@ -559,9 +566,9 @@ export default function AddMealScreen() {
       {/* ── Bottom Action Bar ── */}
       <View
         style={{
-          backgroundColor: "#030A23",
+          backgroundColor: "rgba(255,255,255,0.94)",
           borderTopWidth: 1,
-          borderTopColor: "#0D1526",
+          borderTopColor: SCREEN_COLORS.border,
           paddingTop: 14,
           paddingBottom: 28,
           flexDirection: "row",
@@ -576,14 +583,14 @@ export default function AddMealScreen() {
             width: 52,
             height: 52,
             borderRadius: 26,
-            backgroundColor: "#0D3320",
+            backgroundColor: SCREEN_COLORS.iconBg,
             borderWidth: 1,
-            borderColor: "#22C55E",
+            borderColor: SCREEN_COLORS.primary,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="camera-outline" size={24} color="#22C55E" />
+          <Ionicons name="camera-outline" size={24} color={SCREEN_COLORS.primary} />
         </TouchableOpacity>
 
         {/* AI Sparkle */}
@@ -593,14 +600,14 @@ export default function AddMealScreen() {
             width: 52,
             height: 52,
             borderRadius: 26,
-            backgroundColor: "#0D3320",
+            backgroundColor: SCREEN_COLORS.iconBg,
             borderWidth: 1,
-            borderColor: "#22C55E",
+            borderColor: SCREEN_COLORS.primary,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="sparkles-outline" size={24} color="#22C55E" />
+          <Ionicons name="sparkles-outline" size={24} color={SCREEN_COLORS.primary} />
           <View
             style={{
               position: "absolute",
@@ -623,14 +630,15 @@ export default function AddMealScreen() {
             borderRadius: 26,
             backgroundColor: "transparent",
             borderWidth: 1.5,
-            borderColor: "#22C55E",
+            borderColor: SCREEN_COLORS.primary,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="barcode-outline" size={24} color="#22C55E" />
+          <Ionicons name="barcode-outline" size={24} color={SCREEN_COLORS.primary} />
         </TouchableOpacity>
       </View>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }

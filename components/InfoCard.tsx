@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { SCREEN_COLORS } from "./ScreenBackground";
+
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 interface InfoCardProps {
@@ -27,7 +29,9 @@ export function InfoCard({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
+        borderWidth: 1,
+        borderColor: SCREEN_COLORS.border,
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 14,
@@ -41,7 +45,7 @@ export function InfoCard({
       {/* Text */}
       <View style={{ flex: 1, marginHorizontal: 12, gap: 3 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Text style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 15 }}>
+          <Text style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 15 }}>
             {title}
           </Text>
           {/* Info badge */}
@@ -62,7 +66,7 @@ export function InfoCard({
             </Text>
           </View>
         </View>
-        <Text style={{ color: "#6B7280", fontSize: 12 }}>{subtitle}</Text>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>{subtitle}</Text>
       </View>
 
       {/* Close button */}
@@ -74,7 +78,7 @@ export function InfoCard({
         activeOpacity={0.7}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="close" size={18} color="#6B7280" />
+        <Ionicons name="close" size={18} color={SCREEN_COLORS.textMuted} />
       </TouchableOpacity>
     </TouchableOpacity>
   );

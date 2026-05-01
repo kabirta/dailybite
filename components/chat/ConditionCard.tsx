@@ -1,6 +1,7 @@
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ConditionData, ConditionType } from "../../types/chat";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 const COLORS: Record<ConditionType, { accent: string; bg: string }> = {
   diabetes: { accent: "#3B82F6", bg: "rgba(59,130,246,0.08)" },
@@ -14,7 +15,7 @@ const COLORS: Record<ConditionType, { accent: string; bg: string }> = {
 function ListItem({ text, bullet }: { text: string; bullet: string }) {
   return (
     <Text
-      style={{ color: "#D1D5DB", fontSize: 12, lineHeight: 18, marginBottom: 2 }}
+      style={{ color: SCREEN_COLORS.text, fontSize: 12, lineHeight: 18, marginBottom: 2 }}
     >
       {bullet} {text}
     </Text>
@@ -33,7 +34,7 @@ export function ConditionCard({ data }: Props) {
       style={{
         marginHorizontal: 16,
         marginVertical: 6,
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
         borderRadius: 16,
         overflow: "hidden",
         borderWidth: 1,
@@ -84,7 +85,7 @@ export function ConditionCard({ data }: Props) {
           </View>
 
           {/* Divider */}
-          <View style={{ width: 1, backgroundColor: "#1E2A45" }} />
+          <View style={{ width: 1, backgroundColor: SCREEN_COLORS.border }} />
 
           {/* Avoid */}
           <View style={{ flex: 1 }}>
@@ -134,7 +135,7 @@ export function ConditionCard({ data }: Props) {
                 marginBottom: 10,
                 paddingBottom: 10,
                 borderBottomWidth: i < data.supplements.length - 1 ? 1 : 0,
-                borderBottomColor: "#1A2744",
+                borderBottomColor: SCREEN_COLORS.border,
               }}
             >
               <View
@@ -147,7 +148,7 @@ export function ConditionCard({ data }: Props) {
               >
                 <Text
                   style={{
-                    color: "#F1F5F9",
+                    color: SCREEN_COLORS.text,
                     fontWeight: "600",
                     fontSize: 13,
                     flex: 1,
@@ -169,7 +170,7 @@ export function ConditionCard({ data }: Props) {
               {s.note ? (
                 <Text
                   style={{
-                    color: "#6B7280",
+                    color: SCREEN_COLORS.textMuted,
                     fontSize: 11,
                     marginTop: 3,
                     lineHeight: 16,
@@ -203,7 +204,7 @@ export function ConditionCard({ data }: Props) {
             ⚠️ DISCLAIMER
           </Text>
           <Text
-            style={{ color: "#9CA3AF", fontSize: 11, lineHeight: 16 }}
+            style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, lineHeight: 16 }}
           >
             {data.disclaimer}
           </Text>

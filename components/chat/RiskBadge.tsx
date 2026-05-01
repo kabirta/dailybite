@@ -1,6 +1,7 @@
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { RiskLevel } from "../../types/chat";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -73,7 +74,7 @@ export function RiskBadge({ level, summary }: Props) {
       </View>
 
       {/* Summary */}
-      <Text style={{ color: "#D1D5DB", fontSize: 13, lineHeight: 19 }}>
+      <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, lineHeight: 19 }}>
         {summary || c.fallback}
       </Text>
 

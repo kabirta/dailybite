@@ -10,6 +10,7 @@ import { DaySelector } from "../components/DaySelector";
 import { MealPlanCards } from "../components/MealPlanCards";
 import { MealSection } from "../components/MealSection";
 import { InfoCard } from "../components/InfoCard";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 import { SummaryGrid, PixelGrid } from "../components/SummaryGrid";
 
 const CALORIES_GOAL = 3000;
@@ -96,10 +97,10 @@ export default function DiaryHomeScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#030A23" }}
+      style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }}
       edges={["top"]}
     >
-      <View style={{ flex: 1 }}>
+      <ScreenBackground>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 116 }}
@@ -189,7 +190,9 @@ export default function DiaryHomeScreen() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.card,
+            borderWidth: 1,
+            borderColor: SCREEN_COLORS.border,
             borderRadius: 16,
             marginHorizontal: 16,
             marginBottom: 16,
@@ -197,8 +200,8 @@ export default function DiaryHomeScreen() {
             gap: 8,
           }}
         >
-          <Ionicons name="walk" size={20} color="#6B7280" />
-          <Text style={{ color: "#6B7280", fontSize: 15 }}>
+          <Ionicons name="walk" size={20} color={SCREEN_COLORS.textMuted} />
+          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 15 }}>
             Add Exercise/Sleep
           </Text>
         </TouchableOpacity>
@@ -206,7 +209,9 @@ export default function DiaryHomeScreen() {
         {/* ── Bottom Summary ── */}
         <View
           style={{
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.card,
+            borderWidth: 1,
+            borderColor: SCREEN_COLORS.border,
             borderRadius: 16,
             marginHorizontal: 16,
             padding: 16,
@@ -214,7 +219,7 @@ export default function DiaryHomeScreen() {
         >
           <Text
             style={{
-              color: "#F1F5F9",
+              color: SCREEN_COLORS.text,
               fontWeight: "600",
               fontSize: 16,
               marginBottom: 14,
@@ -232,21 +237,21 @@ export default function DiaryHomeScreen() {
           >
             <View style={{ gap: 10 }}>
               <View>
-                <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 2 }}>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>
                   Calories Remaining
                 </Text>
                 <Text
-                  style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 16 }}
+                  style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
                 >
                   {remaining.toLocaleString()}
                 </Text>
               </View>
               <View>
-                <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 2 }}>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>
                   Calories Consumed
                 </Text>
                 <Text
-                  style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 16 }}
+                  style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
                 >
                   {state.consumed}
                 </Text>
@@ -254,7 +259,7 @@ export default function DiaryHomeScreen() {
               <View>
                 <Text
                   style={{
-                    color: "#9CA3AF",
+                    color: SCREEN_COLORS.textMuted,
                     fontSize: 12,
                     fontStyle: "italic",
                     marginBottom: 2,
@@ -263,7 +268,7 @@ export default function DiaryHomeScreen() {
                   % of RDI
                 </Text>
                 <Text
-                  style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 16 }}
+                  style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
                 >
                   {CALORIES_GOAL.toLocaleString()}
                 </Text>
@@ -282,7 +287,7 @@ export default function DiaryHomeScreen() {
         </ScrollView>
 
         <AppBottomNav />
-      </View>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }

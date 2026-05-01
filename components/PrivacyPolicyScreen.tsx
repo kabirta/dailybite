@@ -1,4 +1,5 @@
 import { Animated, Pressable, ScrollView, Text, View } from "react-native";
+import { ScreenBackground } from "./ScreenBackground";
 
 type PrivacyPolicyScreenProps = {
   privacyAnimation: Animated.Value;
@@ -18,15 +19,16 @@ export default function PrivacyPolicyScreen({
 
   return (
     <Animated.View
-      className="absolute inset-0 bg-[#030A23]"
+      className="absolute inset-0"
       style={{ opacity: privacyAnimation, transform: [{ translateY: privacyTranslateY }] }}
     >
+      <ScreenBackground>
       <View className="flex-1 px-5 pb-6 pt-2">
         <Pressable
-          className="h-12 w-12 items-center justify-center rounded-full bg-white/15 active:opacity-80"
+          className="h-12 w-12 items-center justify-center rounded-full bg-[#cfe9ff] active:opacity-80"
           onPress={onClose}
         >
-          <Text className="text-2xl font-semibold text-white">X</Text>
+          <Text className="text-2xl font-semibold text-[#072d66]">X</Text>
         </Pressable>
 
         <ScrollView
@@ -48,62 +50,63 @@ export default function PrivacyPolicyScreen({
             </View>
           </View>
 
-          <Text className="mt-2 text-[22px] font-extrabold leading-8 text-white">
+          <Text className="mt-2 text-[22px] font-extrabold leading-8 text-[#072d66]">
             Before you get started
           </Text>
 
-          <Text className="mt-5 text-[17px] leading-8 text-white/90">
+          <Text className="mt-5 text-[17px] leading-8 text-[#072d66]">
             NutriMed AI&apos;s mission is to help you reach your nutrition goals by providing tools
             and support to get there. To enable this, we have updated our privacy policy. We want
             to let you know these changes to ensure we are transparent about how we intend to use
             the data you provide to us.
           </Text>
 
-          <Text className="mt-8 text-[20px] font-extrabold leading-8 text-white">
+          <Text className="mt-8 text-[20px] font-extrabold leading-8 text-[#072d66]">
             How we use your data
           </Text>
 
-          <Text className="mt-4 text-[17px] leading-8 text-white/90">
+          <Text className="mt-4 text-[17px] leading-8 text-[#072d66]">
             In summary, we use your data in the following ways:
           </Text>
-          <Text className="mt-4 text-[17px] leading-8 text-white/90">
+          <Text className="mt-4 text-[17px] leading-8 text-[#072d66]">
             - We use your personal and health data to provide you with nutrition goals and
             personalized nutrition guidance.
           </Text>
-          <Text className="mt-4 text-[17px] leading-8 text-white/90">
+          <Text className="mt-4 text-[17px] leading-8 text-[#072d66]">
             - We use your in-app activity data to send educational content and practical guides to
             get more from app features.
           </Text>
-          <Text className="mt-4 text-[17px] leading-8 text-white/90">
+          <Text className="mt-4 text-[17px] leading-8 text-[#072d66]">
             - We use general analytics data to improve our platforms by understanding how users use
             features throughout the website and app.
           </Text>
 
-          <Text className="mt-8 text-[17px] leading-8 text-white/90">
+          <Text className="mt-8 text-[17px] leading-8 text-[#072d66]">
             By clicking Yes, I Agree below, you confirm you have read the privacy policy and agree
             to the uses of your data as outlined above. You can withdraw this permission within the
             app in communication and privacy settings at any time.
           </Text>
 
           <Pressable className="mt-5 items-center">
-            <Text className="text-[16px] text-white/85 underline">Privacy Policy</Text>
+            <Text className="text-[16px] text-[#127dff] underline">Privacy Policy</Text>
           </Pressable>
 
           <Pressable
-            className="mt-8 h-16 items-center justify-center rounded-2xl bg-[#2ED972] active:opacity-90"
+            className="mt-8 h-16 items-center justify-center rounded-2xl bg-[#127dff] active:opacity-90"
             onPress={onAccept}
           >
-            <Text className="text-[16px] font-bold text-[#052540]">Yes, I Agree</Text>
+            <Text className="text-[16px] font-bold text-white">Yes, I Agree</Text>
           </Pressable>
 
           <Pressable
-            className="mt-4 h-16 items-center justify-center rounded-2xl border-[3px] border-[#2ED972] active:opacity-90"
+            className="mt-4 h-16 items-center justify-center rounded-2xl border-[3px] border-[#127dff] active:opacity-90"
             onPress={onClose}
           >
-            <Text className="text-[16px] font-bold text-[#2ED972]">No, I Do Not Agree</Text>
+            <Text className="text-[16px] font-bold text-[#127dff]">No, I Do Not Agree</Text>
           </Pressable>
         </ScrollView>
       </View>
+      </ScreenBackground>
     </Animated.View>
   );
 }

@@ -12,11 +12,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppBottomNav } from "../components/AppBottomNav";
+import { Header } from "../components/Header";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 
 // ─── Data (unchanged) ─────────────────────────────────────────────────────────
 
 const REPORT_TABS = [
   { key: "calories", label: "CALORIES" },
+  { key: "steps", label: "STEPS" },
   { key: "macros", label: "MACROS" },
   { key: "nutrients", label: "NUTRIENTS" },
 ] as const;
@@ -24,6 +27,16 @@ const REPORT_TABS = [
 type ReportTabKey = (typeof REPORT_TABS)[number]["key"];
 
 const WEEK_DAYS = ["Mo 2", "Tu 3", "We 4", "Th 5", "Fr 6", "Sa 7", "Su 8"];
+const STEP_GOAL = 10000;
+const STEP_ROWS = [
+  { day: "Monday", short: "Mo", steps: 0 },
+  { day: "Tuesday", short: "Tu", steps: 0 },
+  { day: "Wednesday", short: "We", steps: 0 },
+  { day: "Thursday", short: "Th", steps: 0 },
+  { day: "Friday", short: "Fr", steps: 0 },
+  { day: "Saturday", short: "Sa", steps: 0 },
+  { day: "Sunday", short: "Su", steps: 0 },
+];
 
 const MEAL_ROWS = [
   { label: "Breakfast", color: "#FFC107" },
@@ -55,13 +68,13 @@ const NUTRIENT_ROWS = [
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
-const BG = "#030A23";
-const CARD = "#0D1526";
-const BORDER = "#1A2744";
-const TEXT_PRIMARY = "#F1F5F9";
-const TEXT_SECONDARY = "#9CA3AF";
-const ACCENT = "#22C55E";
-const GRID_LINE = "#1A2744";
+const BG = SCREEN_COLORS.background;
+const CARD = SCREEN_COLORS.card;
+const BORDER = SCREEN_COLORS.border;
+const TEXT_PRIMARY = SCREEN_COLORS.text;
+const TEXT_SECONDARY = SCREEN_COLORS.textMuted;
+const ACCENT = SCREEN_COLORS.primary;
+const GRID_LINE = "#d8ecff";
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
@@ -186,7 +199,7 @@ function ReportsHeader() {
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: "#1E2A45",
+            backgroundColor: SCREEN_COLORS.iconBg,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -211,12 +224,12 @@ function ReportsHeader() {
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: "#1E2A45",
+            backgroundColor: SCREEN_COLORS.iconBg,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="notifications-outline" size={22} color={TEXT_PRIMARY} />
+          <Ionicons name="notifications-outline" size={22} color={SCREEN_COLORS.primaryDark} />
         </TouchableOpacity>
       </View>
 
@@ -231,12 +244,12 @@ function ReportsHeader() {
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: "#1E2A45",
+            backgroundColor: SCREEN_COLORS.iconBg,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="locate-outline" size={22} color={TEXT_PRIMARY} />
+          <Ionicons name="locate-outline" size={22} color={SCREEN_COLORS.primaryDark} />
         </TouchableOpacity>
       </View>
     </View>
@@ -504,6 +517,196 @@ function CaloriesPanel() {
 
 // ─── Macros Panel ─────────────────────────────────────────────────────────────
 
+function StepsPanel() {
+  const weeklySteps = STEP_ROWS.reduce((total, row) => total + row.steps, 0);
+  const weeklyGoal = STEP_GOAL * STEP_ROWS.length;
+  const dailyAverage = Math.round(weeklySteps / STEP_ROWS.length);
+  const weeklyPct = Math.min(weeklySteps / Math.max(weeklyGoal, 1), 1);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Card>
+        <View style={{ padding: 16 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 14,
+            }}
+          >
+            <View>
+              <Text
+                style={{
+                  color: TEXT_SECONDARY,
+                  fontSize: 12,
+                  fontWeight: "700",
+                  letterSpacing: 0.5,
+                  marginBottom: 4,
+                  textTransform: "uppercase",
+                }}
+              >
+                Weekly Steps
+              </Text>
+              <Text
+                style={{
+                  color: TEXT_PRIMARY,
+                  fontSize: 48,
+                  fontWeight: "700",
+                  lineHeight: 56,
+                }}
+              >
+                {weeklySteps.toLocaleString()}
+              </Text>
+              <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
+                Daily Avg: {dailyAverage.toLocaleString()} steps
+              </Text>
+            </View>
+
+            <View
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: 18,
+                backgroundColor: SCREEN_COLORS.iconBg,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="footsteps-outline" size={30} color={ACCENT} />
+            </View>
+          </View>
+
+          <View
+            style={{
+              backgroundColor: SCREEN_COLORS.cardSoft,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: BORDER,
+              padding: 14,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ color: TEXT_PRIMARY, fontSize: 14, fontWeight: "700" }}>
+                Goal Progress
+              </Text>
+              <Text style={{ color: ACCENT, fontSize: 13, fontWeight: "700" }}>
+                {Math.round(weeklyPct * 100)}%
+              </Text>
+            </View>
+
+            <View
+              style={{
+                height: 10,
+                borderRadius: 999,
+                backgroundColor: "#d8ecff",
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  width: `${weeklyPct * 100}%`,
+                  height: "100%",
+                  borderRadius: 999,
+                  backgroundColor: ACCENT,
+                }}
+              />
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 8,
+              }}
+            >
+              <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
+                {weeklySteps.toLocaleString()} steps
+              </Text>
+              <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
+                Goal: {weeklyGoal.toLocaleString()}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Card>
+
+      <Card>
+        <SectionTitle text="Daily Step Count" />
+        <RowDivider />
+
+        {STEP_ROWS.map((row, index) => {
+          const progress = Math.min(row.steps / STEP_GOAL, 1);
+
+          return (
+            <View key={row.day}>
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 10 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <View
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 12,
+                        backgroundColor: SCREEN_COLORS.iconBg,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ color: ACCENT, fontSize: 12, fontWeight: "800" }}>
+                        {row.short}
+                      </Text>
+                    </View>
+                    <Text style={{ color: TEXT_PRIMARY, fontSize: 14, fontWeight: "600" }}>
+                      {row.day}
+                    </Text>
+                  </View>
+
+                  <Text style={{ color: TEXT_PRIMARY, fontSize: 15, fontWeight: "700" }}>
+                    {row.steps.toLocaleString()}
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    height: 6,
+                    borderRadius: 999,
+                    backgroundColor: "#d8ecff",
+                    overflow: "hidden",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: `${progress * 100}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      backgroundColor: ACCENT,
+                    }}
+                  />
+                </View>
+              </View>
+              {index < STEP_ROWS.length - 1 ? <RowDivider /> : null}
+            </View>
+          );
+        })}
+      </Card>
+    </View>
+  );
+}
+
 function MacrosPanel() {
   return (
     <View style={{ gap: 12 }}>
@@ -675,7 +878,7 @@ function NutrientsPanel() {
               alignItems: "center",
               paddingHorizontal: 16,
               paddingVertical: 13,
-              backgroundColor: index % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+              backgroundColor: index % 2 === 0 ? "transparent" : SCREEN_COLORS.cardSoft,
             }}
           >
             <Text
@@ -735,7 +938,7 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={["top"]}>
-      <View style={{ flex: 1 }}>
+      <ScreenBackground>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
@@ -744,7 +947,7 @@ export default function ReportsScreen() {
             paddingBottom: 116,
           }}
         >
-          <ReportsHeader />
+          <Header />
           <WeekPicker />
 
           {/* ── Tab bar ── */}
@@ -802,6 +1005,9 @@ export default function ReportsScreen() {
               <CaloriesPanel />
             </View>
             <View style={{ width: pageWidth }}>
+              <StepsPanel />
+            </View>
+            <View style={{ width: pageWidth }}>
               <MacrosPanel />
             </View>
             <View style={{ width: pageWidth }}>
@@ -811,7 +1017,7 @@ export default function ReportsScreen() {
         </ScrollView>
 
         <AppBottomNav />
-      </View>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }

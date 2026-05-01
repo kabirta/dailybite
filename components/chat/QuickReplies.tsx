@@ -1,5 +1,6 @@
 import { ScrollView, TouchableOpacity, Text } from "react-native";
 import { QuickReply } from "../../types/chat";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 interface Props {
   replies: QuickReply[];
@@ -24,14 +25,14 @@ export function QuickReplies({ replies, onSelect }: Props) {
           activeOpacity={0.72}
           style={{
             borderWidth: 1.5,
-            borderColor: "#3B82F6",
+            borderColor: SCREEN_COLORS.primary,
             borderRadius: 20,
             paddingHorizontal: 14,
             paddingVertical: 8,
-            backgroundColor: "rgba(59,130,246,0.1)",
+            backgroundColor: SCREEN_COLORS.card,
           }}
         >
-          <Text style={{ color: "#60A5FA", fontSize: 13, fontWeight: "500" }}>
+          <Text style={{ color: SCREEN_COLORS.primary, fontSize: 13, fontWeight: "500" }}>
             {r.label}
           </Text>
         </TouchableOpacity>

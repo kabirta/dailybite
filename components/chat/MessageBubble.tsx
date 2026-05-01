@@ -1,5 +1,6 @@
 import { View, Text } from "react-native";
 import { ChatMessage } from "../../types/chat";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 function formatTime(d: Date) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -47,21 +48,23 @@ export function MessageBubble({ message }: Props) {
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: "#1E3A5F",
+              backgroundColor: SCREEN_COLORS.iconBg,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <Text style={{ fontSize: 14 }}>🤖</Text>
           </View>
-          <Text style={{ color: "#6B7280", fontSize: 11 }}>Health AI</Text>
+          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11 }}>Health AI</Text>
         </View>
       )}
 
       {/* Bubble */}
       <View
         style={{
-          backgroundColor: isUser ? "#1D4ED8" : "#0D1526",
+          backgroundColor: isUser ? SCREEN_COLORS.primary : SCREEN_COLORS.card,
+          borderWidth: isUser ? 0 : 1,
+          borderColor: SCREEN_COLORS.border,
           borderRadius: 18,
           borderBottomRightRadius: isUser ? 4 : 18,
           borderBottomLeftRadius: isUser ? 18 : 4,
@@ -69,7 +72,7 @@ export function MessageBubble({ message }: Props) {
           paddingVertical: 10,
         }}
       >
-        <Text style={{ color: "#F1F5F9", fontSize: 14, lineHeight: 21 }}>
+        <Text style={{ color: isUser ? "#ffffff" : SCREEN_COLORS.text, fontSize: 14, lineHeight: 21 }}>
           {text}
         </Text>
       </View>
@@ -77,7 +80,7 @@ export function MessageBubble({ message }: Props) {
       {/* Timestamp */}
       <Text
         style={{
-          color: "#374151",
+          color: SCREEN_COLORS.textMuted,
           fontSize: 10,
           marginTop: 3,
           alignSelf: isUser ? "flex-end" : "flex-start",

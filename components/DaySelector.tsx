@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { SCREEN_COLORS } from "./ScreenBackground";
+
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 
 interface DaySelectorProps {
@@ -18,7 +20,9 @@ export function DaySelector({
 }: DaySelectorProps) {
   return (
     <View className="px-4 pb-3">
-      <Text className="text-white font-semibold text-xl mb-4">Today</Text>
+      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 22, marginBottom: 16 }}>
+        Today
+      </Text>
 
       {/* Day circles */}
       <View
@@ -42,15 +46,15 @@ export function DaySelector({
                   width: 38,
                   height: 38,
                   borderRadius: 19,
-                  backgroundColor: isActive ? "#22C55E" : "transparent",
-                  borderWidth: isActive ? 0 : 1.5,
-                  borderColor: "#2A3A5C",
+                  backgroundColor: isActive ? SCREEN_COLORS.primary : "rgba(207,233,255,0.45)",
+                  borderWidth: 1.5,
+                  borderColor: isActive ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
                 }}
               />
               <Text
                 style={{
                   fontSize: 11,
-                  color: isActive ? "#4ADE80" : "#6B7280",
+                  color: isActive ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted,
                   fontWeight: isActive ? "600" : "400",
                 }}
               >
@@ -63,9 +67,9 @@ export function DaySelector({
 
       {/* Streak row */}
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: "#6B7280", fontSize: 12 }}>{streakCount} </Text>
-        <Ionicons name="flame" size={13} color="#6B7280" />
-        <Text style={{ color: "#6B7280", fontSize: 12, marginLeft: 4 }}>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>{streakCount} </Text>
+        <Ionicons name="flame" size={13} color={SCREEN_COLORS.textMuted} />
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginLeft: 4 }}>
           Log food to start a streak
         </Text>
         <TouchableOpacity
@@ -73,7 +77,7 @@ export function DaySelector({
           style={{ marginLeft: "auto" }}
           activeOpacity={0.7}
         >
-          <Ionicons name="information-circle-outline" size={19} color="#3B82F6" />
+          <Ionicons name="information-circle-outline" size={19} color={SCREEN_COLORS.primary} />
         </TouchableOpacity>
       </View>
     </View>

@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { SCREEN_COLORS } from "./ScreenBackground";
+
 const GRID_ROWS = 8;
 const GRID_COLS = 8;
 const TOTAL_CELLS = GRID_ROWS * GRID_COLS;
@@ -15,8 +17,8 @@ interface PixelGridProps {
 
 export function PixelGrid({
   filledCells = 0,
-  filledColor = "#22C55E",
-  emptyColor = "#1A2744",
+  filledColor = SCREEN_COLORS.primary,
+  emptyColor = "#d8ecff",
   cellSize = 6,
   cellGap = 1,
 }: PixelGridProps) {
@@ -80,7 +82,7 @@ export function SummaryGrid({
       >
         <Text
           style={{
-            color: "#9CA3AF",
+            color: SCREEN_COLORS.textMuted,
             fontSize: 11,
             fontWeight: "600",
             letterSpacing: 0.8,
@@ -92,14 +94,16 @@ export function SummaryGrid({
         <Ionicons
           name={isCollapsed ? "chevron-down" : "chevron-up"}
           size={13}
-          color="#9CA3AF"
+          color={SCREEN_COLORS.textMuted}
         />
       </TouchableOpacity>
 
       {/* Summary card */}
       <View
         style={{
-          backgroundColor: "#0D1526",
+          backgroundColor: SCREEN_COLORS.card,
+          borderWidth: 1,
+          borderColor: SCREEN_COLORS.border,
           borderRadius: 16,
           padding: 16,
           flexDirection: "row",
@@ -109,21 +113,21 @@ export function SummaryGrid({
       >
         <View style={{ gap: 10 }}>
           <View>
-            <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 1 }}>
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 1 }}>
               Calories Remaining
             </Text>
             <Text
-              style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 16 }}
+              style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
             >
               {remaining.toLocaleString()}
             </Text>
           </View>
           <View>
-            <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 1 }}>
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 1 }}>
               Calories Consumed
             </Text>
             <Text
-              style={{ color: "#F1F5F9", fontWeight: "600", fontSize: 16 }}
+              style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
             >
               {consumed}
             </Text>

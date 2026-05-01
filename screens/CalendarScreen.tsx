@@ -3,6 +3,8 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Header } from "../components/Header";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
@@ -114,8 +116,11 @@ export default function CalendarScreen() {
   const selectedIso = formatIsoDate(selectedDate);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030A23" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }} edges={["top"]}>
+      <ScreenBackground>
+      <Header />
       <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 }}>
+        {false ? (
         <View
           style={{
             flexDirection: "row",
@@ -137,15 +142,15 @@ export default function CalendarScreen() {
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: "#1E2A45",
+              backgroundColor: SCREEN_COLORS.iconBg,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
+            <Ionicons name="arrow-back" size={20} color={SCREEN_COLORS.primaryDark} />
           </TouchableOpacity>
 
-          <Text style={{ color: "#F1F5F9", fontSize: 22, fontWeight: "700" }}>Calendar</Text>
+          <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "700" }}>Calendar</Text>
 
           <TouchableOpacity
             activeOpacity={0.8}
@@ -158,25 +163,26 @@ export default function CalendarScreen() {
               minWidth: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: "#1E2A45",
+              backgroundColor: SCREEN_COLORS.iconBg,
               alignItems: "center",
               justifyContent: "center",
               paddingHorizontal: 10,
             }}
           >
-            <Text style={{ color: "#E2E8F0", fontSize: 12, fontWeight: "700" }}>Today</Text>
+            <Text style={{ color: SCREEN_COLORS.primaryDark, fontSize: 12, fontWeight: "700" }}>Today</Text>
           </TouchableOpacity>
         </View>
+        ) : null}
 
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.card,
             borderRadius: 14,
             borderWidth: 1,
-            borderColor: "#1A2744",
+            borderColor: SCREEN_COLORS.border,
             paddingHorizontal: 8,
             paddingVertical: 8,
             marginBottom: 12,
@@ -197,10 +203,10 @@ export default function CalendarScreen() {
               justifyContent: "center",
             }}
           >
-            <Ionicons name="chevron-back" size={18} color="#CBD5E1" />
+            <Ionicons name="chevron-back" size={18} color={SCREEN_COLORS.textMuted} />
           </TouchableOpacity>
 
-          <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "600" }}>{monthLabel}</Text>
+          <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "600" }}>{monthLabel}</Text>
 
           <TouchableOpacity
             activeOpacity={0.8}
@@ -217,7 +223,7 @@ export default function CalendarScreen() {
               justifyContent: "center",
             }}
           >
-            <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+            <Ionicons name="chevron-forward" size={18} color={SCREEN_COLORS.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -228,7 +234,7 @@ export default function CalendarScreen() {
               style={{
                 width: "14.2857%",
                 textAlign: "center",
-                color: "#94A3B8",
+                color: SCREEN_COLORS.textMuted,
                 fontSize: 12,
                 fontWeight: "600",
               }}
@@ -240,10 +246,10 @@ export default function CalendarScreen() {
 
         <View
           style={{
-            backgroundColor: "#0D1526",
+            backgroundColor: SCREEN_COLORS.card,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: "#1A2744",
+            borderColor: SCREEN_COLORS.border,
             paddingHorizontal: 4,
             paddingTop: 10,
             paddingBottom: 4,
@@ -267,15 +273,15 @@ export default function CalendarScreen() {
                       borderRadius: 12,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: isSelected ? "#22C55E" : "transparent",
+                      backgroundColor: isSelected ? SCREEN_COLORS.primary : "transparent",
                       borderWidth: isToday && !isSelected ? 1 : 0,
-                      borderColor: "#22C55E",
+                      borderColor: SCREEN_COLORS.primary,
                       opacity: cell.isCurrentMonth ? 1 : 0.4,
                     }}
                   >
                     <Text
                       style={{
-                        color: isSelected ? "#031226" : "#E2E8F0",
+                        color: isSelected ? "#ffffff" : SCREEN_COLORS.text,
                         fontSize: 15,
                         fontWeight: isSelected ? "700" : "500",
                       }}
@@ -292,7 +298,7 @@ export default function CalendarScreen() {
         <View style={{ marginTop: "auto", paddingTop: 18 }}>
           <Text
             style={{
-              color: "#94A3B8",
+              color: SCREEN_COLORS.textMuted,
               fontSize: 13,
               textAlign: "center",
               marginBottom: 12,
@@ -305,7 +311,7 @@ export default function CalendarScreen() {
             activeOpacity={0.85}
             onPress={() => router.replace(`/diary?date=${selectedIso}`)}
             style={{
-              backgroundColor: "#22C55E",
+              backgroundColor: SCREEN_COLORS.primary,
               borderRadius: 14,
               paddingVertical: 14,
               flexDirection: "row",
@@ -314,13 +320,14 @@ export default function CalendarScreen() {
               gap: 8,
             }}
           >
-            <Ionicons name="calendar" size={18} color="#031226" />
-            <Text style={{ color: "#031226", fontSize: 15, fontWeight: "700" }}>
+            <Ionicons name="calendar" size={18} color="#ffffff" />
+            <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "700" }}>
               Open Diary For Selected Date
             </Text>
           </TouchableOpacity>
         </View>
       </View>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }

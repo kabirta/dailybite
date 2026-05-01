@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { RedFlagData, RedFlagType } from "../../types/chat";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 const PROTOCOL_META: Record<
   RedFlagType,
@@ -70,7 +71,7 @@ export function RedFlagCard({ data }: Props) {
       <View style={{ padding: 14, gap: 10 }}>
         {/* Indicators — lettered like FAST / ABC */}
         <Text
-          style={{ color: "#9CA3AF", fontSize: 12, fontWeight: "600" }}
+          style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, fontWeight: "600" }}
         >
           Watch for:
         </Text>
@@ -100,7 +101,7 @@ export function RedFlagCard({ data }: Props) {
             </View>
             <Text
               style={{
-                color: "#E2E8F0",
+                color: SCREEN_COLORS.text,
                 fontSize: 13,
                 lineHeight: 19,
                 flex: 1,
@@ -114,13 +115,15 @@ export function RedFlagCard({ data }: Props) {
         {/* Action note */}
         <View
           style={{
-            backgroundColor: "rgba(0,0,0,0.18)",
+            backgroundColor: SCREEN_COLORS.card,
+            borderWidth: 1,
+            borderColor: SCREEN_COLORS.border,
             borderRadius: 10,
             padding: 10,
             marginTop: 2,
           }}
         >
-          <Text style={{ color: "#F1F5F9", fontSize: 12, lineHeight: 17 }}>
+          <Text style={{ color: SCREEN_COLORS.text, fontSize: 12, lineHeight: 17 }}>
             ⚡ {data.action}
           </Text>
         </View>

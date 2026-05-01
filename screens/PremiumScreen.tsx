@@ -9,6 +9,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppBottomNav } from "../components/AppBottomNav";
+import { Header } from "../components/Header";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 
 // ─── Data (unchanged) ────────────────────────────────────────────────────────
 
@@ -60,12 +62,12 @@ function FeatureRow({ label }: { label: string }) {
       style={{
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
         borderRadius: 14,
         padding: 14,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: "#1A2744",
+        borderColor: SCREEN_COLORS.border,
         gap: 14,
       }}
     >
@@ -86,11 +88,11 @@ function FeatureRow({ label }: { label: string }) {
 
       {/* Text */}
       <View style={{ flex: 1 }}>
-        <Text style={{ color: "#F1F5F9", fontSize: 14, fontWeight: "700" }}>
+        <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, fontWeight: "700" }}>
           {label}
         </Text>
         <Text
-          style={{ color: "#6B7280", fontSize: 12, marginTop: 2, lineHeight: 17 }}
+          style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 2, lineHeight: 17 }}
         >
           {meta.desc}
         </Text>
@@ -108,10 +110,11 @@ export default function PremiumScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#030A23" }}
+      style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }}
       edges={["top"]}
     >
-      <View style={{ flex: 1 }}>
+      <ScreenBackground>
+        <Header />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
@@ -160,7 +163,7 @@ export default function PremiumScreen() {
 
             <Text
               style={{
-                color: "#F1F5F9",
+                color: SCREEN_COLORS.text,
                 fontSize: 28,
                 fontWeight: "800",
                 textAlign: "center",
@@ -172,7 +175,7 @@ export default function PremiumScreen() {
             </Text>
             <Text
               style={{
-                color: "#6B7280",
+                color: SCREEN_COLORS.textMuted,
                 fontSize: 14,
                 textAlign: "center",
                 lineHeight: 20,
@@ -197,10 +200,10 @@ export default function PremiumScreen() {
               activeOpacity={0.85}
               onPress={() => setSelected(index)}
               style={{
-                backgroundColor: "#0D1526",
+                backgroundColor: SCREEN_COLORS.card,
                 borderRadius: 18,
                 borderWidth: 2,
-                borderColor: selected === index ? "#EAB308" : "#1A2744",
+                borderColor: selected === index ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
                 padding: 18,
                 marginBottom: 12,
                 flexDirection: "row",
@@ -212,11 +215,11 @@ export default function PremiumScreen() {
               <View style={{ gap: 4 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Text
-                    style={{ color: "#F1F5F9", fontSize: 26, fontWeight: "800" }}
+                    style={{ color: SCREEN_COLORS.text, fontSize: 26, fontWeight: "800" }}
                   >
                     {plan.amount}
                   </Text>
-                  <Text style={{ color: "#9CA3AF", fontSize: 15, fontWeight: "500" }}>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 15, fontWeight: "500" }}>
                     {plan.period}
                   </Text>
                 </View>
@@ -244,7 +247,7 @@ export default function PremiumScreen() {
                   height: 24,
                   borderRadius: 12,
                   borderWidth: 2,
-                  borderColor: selected === index ? "#EAB308" : "#374151",
+                  borderColor: selected === index ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -255,7 +258,7 @@ export default function PremiumScreen() {
                       width: 12,
                       height: 12,
                       borderRadius: 6,
-                      backgroundColor: "#EAB308",
+                      backgroundColor: SCREEN_COLORS.primary,
                     }}
                   />
                 )}
@@ -268,12 +271,12 @@ export default function PremiumScreen() {
             style={{
               flexDirection: "row",
               justifyContent: "space-around",
-              backgroundColor: "#0D1526",
+              backgroundColor: SCREEN_COLORS.card,
               borderRadius: 14,
               paddingVertical: 14,
               marginBottom: 24,
               borderWidth: 1,
-              borderColor: "#1A2744",
+              borderColor: SCREEN_COLORS.border,
             }}
           >
             {[
@@ -283,7 +286,7 @@ export default function PremiumScreen() {
             ].map((item) => (
               <View key={item.label} style={{ alignItems: "center", gap: 5 }}>
                 <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
-                <Text style={{ color: "#9CA3AF", fontSize: 11, fontWeight: "600" }}>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, fontWeight: "600" }}>
                   {item.label}
                 </Text>
               </View>
@@ -296,7 +299,7 @@ export default function PremiumScreen() {
             style={{
               height: 56,
               borderRadius: 16,
-              backgroundColor: "#EAB308",
+              backgroundColor: SCREEN_COLORS.primary,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
@@ -304,9 +307,9 @@ export default function PremiumScreen() {
               marginBottom: 14,
             }}
           >
-            <Ionicons name="star" size={18} color="#1A0F00" />
+            <Ionicons name="star" size={18} color="#ffffff" />
             <Text
-              style={{ color: "#1A0F00", fontSize: 17, fontWeight: "800" }}
+              style={{ color: "#ffffff", fontSize: 17, fontWeight: "800" }}
             >
               Subscribe Now
             </Text>
@@ -314,27 +317,27 @@ export default function PremiumScreen() {
 
           {/* ── Restore + Terms ── */}
           <TouchableOpacity style={{ alignItems: "center", marginBottom: 6 }}>
-            <Text style={{ color: "#6B7280", fontSize: 13 }}>
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13 }}>
               Restore Purchase
             </Text>
           </TouchableOpacity>
           <Text
             style={{
-              color: "#374151",
+              color: SCREEN_COLORS.textMuted,
               fontSize: 11,
               textAlign: "center",
               lineHeight: 16,
             }}
           >
             By subscribing you agree to our{" "}
-            <Text style={{ color: "#6B7280" }}>Terms of Service</Text> and{" "}
-            <Text style={{ color: "#6B7280" }}>Privacy Policy</Text>.{"\n"}
+            <Text style={{ color: SCREEN_COLORS.primary }}>Terms of Service</Text> and{" "}
+            <Text style={{ color: SCREEN_COLORS.primary }}>Privacy Policy</Text>.{"\n"}
             Subscription auto-renews unless cancelled.
           </Text>
         </ScrollView>
 
         <AppBottomNav />
-      </View>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }

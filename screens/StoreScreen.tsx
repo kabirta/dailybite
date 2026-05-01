@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppBottomNav } from "../components/AppBottomNav";
+import { Header } from "../components/Header";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 
 type Product = {
   id: string;
@@ -77,12 +79,12 @@ function ProductCard({
   return (
     <View
       style={{
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
         borderRadius: 24,
         marginBottom: 18,
         overflow: "hidden",
         borderWidth: 1,
-        borderColor: "#1E2A44",
+        borderColor: SCREEN_COLORS.border,
       }}
     >
       <Image
@@ -109,7 +111,7 @@ function ProductCard({
 
         <Text
           style={{
-            color: "#F8FAFC",
+            color: SCREEN_COLORS.text,
             fontSize: 21,
             fontWeight: "800",
             marginBottom: 8,
@@ -159,7 +161,7 @@ function ProductCard({
             <Text style={{ color: "#64748B", fontSize: 12, marginBottom: 3 }}>
               Price
             </Text>
-            <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "800" }}>
+            <Text style={{ color: SCREEN_COLORS.text, fontSize: 24, fontWeight: "800" }}>
               {formatPrice(product.price)}
             </Text>
           </View>
@@ -220,8 +222,9 @@ export default function StoreScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030A23" }} edges={["top"]}>
-      <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }} edges={["top"]}>
+      <ScreenBackground>
+        <Header />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 126, paddingHorizontal: 16 }}
@@ -238,7 +241,7 @@ export default function StoreScreen() {
               <View style={{ flex: 1, paddingRight: 16 }}>
                 <Text
                   style={{
-                    color: "#38BDF8",
+                    color: SCREEN_COLORS.primary,
                     fontSize: 12,
                     fontWeight: "700",
                     letterSpacing: 1,
@@ -250,7 +253,7 @@ export default function StoreScreen() {
                 </Text>
                 <Text
                   style={{
-                    color: "#F8FAFC",
+                    color: SCREEN_COLORS.text,
                     fontSize: 28,
                     fontWeight: "800",
                     lineHeight: 34,
@@ -259,7 +262,7 @@ export default function StoreScreen() {
                 >
                   Shop smart nutrition essentials
                 </Text>
-                <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 20 }}>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 20 }}>
                   Browse curated products, open the detail card, adjust quantity,
                   and add items to your cart without leaving the page.
                 </Text>
@@ -270,23 +273,23 @@ export default function StoreScreen() {
                   width: 56,
                   height: 56,
                   borderRadius: 18,
-                  backgroundColor: "#0F1D37",
+                  backgroundColor: SCREEN_COLORS.iconBg,
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: 1,
-                  borderColor: "#1E2A44",
+                  borderColor: SCREEN_COLORS.border,
                 }}
               >
-                <Ionicons name="storefront" size={28} color="#38BDF8" />
+                <Ionicons name="storefront" size={28} color={SCREEN_COLORS.primary} />
               </View>
             </View>
 
             <View
               style={{
-                backgroundColor: "#0D1526",
+                backgroundColor: SCREEN_COLORS.card,
                 borderRadius: 22,
                 borderWidth: 1,
-                borderColor: "#1E2A44",
+                borderColor: SCREEN_COLORS.border,
                 padding: 18,
                 flexDirection: "row",
                 alignItems: "center",
@@ -294,10 +297,10 @@ export default function StoreScreen() {
               }}
             >
               <View>
-                <Text style={{ color: "#94A3B8", fontSize: 13, marginBottom: 4 }}>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, marginBottom: 4 }}>
                   Cart
                 </Text>
-                <Text style={{ color: "#F8FAFC", fontSize: 20, fontWeight: "800" }}>
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 20, fontWeight: "800" }}>
                   {cartCount} items
                 </Text>
               </View>
@@ -313,8 +316,8 @@ export default function StoreScreen() {
                   borderRadius: 999,
                 }}
               >
-                <Ionicons name="cart" size={18} color="#38BDF8" />
-                <Text style={{ color: "#38BDF8", fontWeight: "700" }}>
+                <Ionicons name="cart" size={18} color={SCREEN_COLORS.primary} />
+                <Text style={{ color: SCREEN_COLORS.primary, fontWeight: "700" }}>
                   Ready to checkout
                 </Text>
               </View>
@@ -327,7 +330,7 @@ export default function StoreScreen() {
         </ScrollView>
 
         <AppBottomNav />
-      </View>
+      </ScreenBackground>
 
       <Modal
         visible={!!selectedProduct}
@@ -339,7 +342,7 @@ export default function StoreScreen() {
           style={{
             flex: 1,
             justifyContent: "flex-end",
-            backgroundColor: "rgba(1, 6, 17, 0.7)",
+            backgroundColor: "rgba(7, 45, 102, 0.24)",
           }}
         >
           <Pressable style={{ flex: 1 }} onPress={closeProductSheet} />
@@ -347,7 +350,7 @@ export default function StoreScreen() {
           {selectedProduct ? (
             <SafeAreaView
               style={{
-                backgroundColor: "#081223",
+                backgroundColor: SCREEN_COLORS.background,
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
                 overflow: "hidden",
@@ -377,7 +380,7 @@ export default function StoreScreen() {
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          color: "#F8FAFC",
+                          color: SCREEN_COLORS.text,
                           fontSize: 24,
                           fontWeight: "800",
                           marginBottom: 6,
@@ -399,16 +402,16 @@ export default function StoreScreen() {
                         borderRadius: 19,
                         alignItems: "center",
                         justifyContent: "center",
-                        backgroundColor: "#0F1D37",
+                        backgroundColor: SCREEN_COLORS.iconBg,
                       }}
                     >
-                      <Ionicons name="close" size={20} color="#CBD5E1" />
+                      <Ionicons name="close" size={20} color={SCREEN_COLORS.primaryDark} />
                     </TouchableOpacity>
                   </View>
 
                   <Text
                     style={{
-                      color: "#94A3B8",
+                      color: SCREEN_COLORS.textMuted,
                       fontSize: 15,
                       lineHeight: 22,
                       marginBottom: 18,
@@ -425,16 +428,16 @@ export default function StoreScreen() {
                           flexDirection: "row",
                           alignItems: "center",
                           gap: 10,
-                          backgroundColor: "#0D1526",
+                          backgroundColor: SCREEN_COLORS.card,
                           borderRadius: 16,
                           paddingHorizontal: 14,
                           paddingVertical: 12,
                           borderWidth: 1,
-                          borderColor: "#1E2A44",
+                          borderColor: SCREEN_COLORS.border,
                         }}
                       >
                         <Ionicons name="checkmark-circle" size={18} color={selectedProduct.accent} />
-                        <Text style={{ color: "#E2E8F0", fontSize: 14, fontWeight: "600" }}>
+                        <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, fontWeight: "600" }}>
                           {benefit}
                         </Text>
                       </View>
@@ -443,16 +446,16 @@ export default function StoreScreen() {
 
                   <View
                     style={{
-                      backgroundColor: "#0D1526",
+                      backgroundColor: SCREEN_COLORS.card,
                       borderRadius: 20,
                       borderWidth: 1,
-                      borderColor: "#1E2A44",
+                      borderColor: SCREEN_COLORS.border,
                       padding: 18,
                     }}
                   >
                     <Text
                       style={{
-                        color: "#94A3B8",
+                        color: SCREEN_COLORS.textMuted,
                         fontSize: 13,
                         marginBottom: 12,
                       }}
@@ -472,7 +475,7 @@ export default function StoreScreen() {
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
-                          backgroundColor: "#101A31",
+                          backgroundColor: SCREEN_COLORS.cardSoft,
                           borderRadius: 18,
                           padding: 6,
                           gap: 6,
@@ -487,14 +490,14 @@ export default function StoreScreen() {
                             borderRadius: 14,
                             alignItems: "center",
                             justifyContent: "center",
-                            backgroundColor: "#081223",
+                            backgroundColor: SCREEN_COLORS.card,
                           }}
                         >
-                          <Ionicons name="remove" size={18} color="#E2E8F0" />
+                          <Ionicons name="remove" size={18} color={SCREEN_COLORS.primaryDark} />
                         </TouchableOpacity>
 
                         <View style={{ minWidth: 42, alignItems: "center" }}>
-                          <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "800" }}>
+                          <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "800" }}>
                             {quantity}
                           </Text>
                         </View>
@@ -516,10 +519,10 @@ export default function StoreScreen() {
                       </View>
 
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={{ color: "#94A3B8", fontSize: 12, marginBottom: 3 }}>
+                        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 3 }}>
                           Total
                         </Text>
-                        <Text style={{ color: "#F8FAFC", fontSize: 22, fontWeight: "800" }}>
+                        <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "800" }}>
                           {formatPrice(totalPrice)}
                         </Text>
                       </View>

@@ -27,6 +27,8 @@ import { RedFlagCard } from "../components/chat/RedFlagCard";
 import { WaterTracker } from "../components/chat/WaterTracker";
 import { ConditionCard } from "../components/chat/ConditionCard";
 import { SuggestionCards } from "../components/chat/SuggestionCards";
+import { Header } from "../components/Header";
+import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 
 // ─── Initial greeting ─────────────────────────────────────────────────────────
 
@@ -98,7 +100,7 @@ function TypingIndicator() {
           width: 28,
           height: 28,
           borderRadius: 14,
-          backgroundColor: "#1E3A5F",
+          backgroundColor: SCREEN_COLORS.iconBg,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -107,14 +109,16 @@ function TypingIndicator() {
       </View>
       <View
         style={{
-          backgroundColor: "#0D1526",
+          backgroundColor: SCREEN_COLORS.card,
+          borderWidth: 1,
+          borderColor: SCREEN_COLORS.border,
           borderRadius: 16,
           borderBottomLeftRadius: 4,
           paddingHorizontal: 16,
           paddingVertical: 12,
         }}
       >
-        <ActivityIndicator size="small" color="#3B82F6" />
+        <ActivityIndicator size="small" color={SCREEN_COLORS.primary} />
       </View>
     </View>
   );
@@ -250,14 +254,17 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#030A23" }}
+      style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }}
       edges={["top"]}
     >
+      <ScreenBackground>
+      <Header />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
+        {false ? (<>
         {/* ── Header ── */}
         <View
           style={{
@@ -266,7 +273,7 @@ export default function ChatScreen() {
             paddingHorizontal: 16,
             paddingVertical: 13,
             borderBottomWidth: 1,
-            borderBottomColor: "#0D1526",
+            borderBottomColor: SCREEN_COLORS.border,
           }}
         >
           <TouchableOpacity
@@ -274,7 +281,7 @@ export default function ChatScreen() {
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="arrow-back" size={24} color="#E2E8F0" />
+            <Ionicons name="arrow-back" size={24} color={SCREEN_COLORS.primaryDark} />
           </TouchableOpacity>
 
           <View style={{ flex: 1, alignItems: "center" }}>
@@ -286,16 +293,16 @@ export default function ChatScreen() {
                   width: 8,
                   height: 8,
                   borderRadius: 4,
-                  backgroundColor: "#22C55E",
+                  backgroundColor: SCREEN_COLORS.primary,
                 }}
               />
               <Text
-                style={{ color: "#F1F5F9", fontWeight: "700", fontSize: 16 }}
+                style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 16 }}
               >
                 AI Health Assistant
               </Text>
             </View>
-            <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 1 }}>
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, marginTop: 1 }}>
               Powered by n8n · Evidence-based
             </Text>
           </View>
@@ -305,6 +312,8 @@ export default function ChatScreen() {
         </View>
 
         {/* ── Message list ── */}
+        </>) : null}
+
         <FlatList
           ref={listRef}
           data={messages}
@@ -330,14 +339,16 @@ export default function ChatScreen() {
             paddingTop: 10,
             paddingBottom: Platform.OS === "ios" ? 12 : 16,
             borderTopWidth: 1,
-            borderTopColor: "#0D1526",
+            borderTopColor: SCREEN_COLORS.border,
             gap: 10,
           }}
         >
           <View
             style={{
               flex: 1,
-              backgroundColor: "#0D1526",
+              backgroundColor: SCREEN_COLORS.card,
+              borderWidth: 1,
+              borderColor: SCREEN_COLORS.border,
               borderRadius: 22,
               paddingHorizontal: 16,
               paddingVertical: 10,
@@ -350,8 +361,8 @@ export default function ChatScreen() {
               value={input}
               onChangeText={setInput}
               placeholder="Describe your symptoms..."
-              placeholderTextColor="#374151"
-              style={{ color: "#F1F5F9", fontSize: 14, lineHeight: 20 }}
+              placeholderTextColor={SCREEN_COLORS.textMuted}
+              style={{ color: SCREEN_COLORS.text, fontSize: 14, lineHeight: 20 }}
               multiline
               blurOnSubmit={false}
             />
@@ -366,7 +377,7 @@ export default function ChatScreen() {
               height: 44,
               borderRadius: 22,
               backgroundColor:
-                input.trim() && !loading ? "#3B82F6" : "#0D1526",
+                input.trim() && !loading ? SCREEN_COLORS.primary : SCREEN_COLORS.iconBg,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -374,11 +385,12 @@ export default function ChatScreen() {
             <Ionicons
               name="send"
               size={18}
-              color={input.trim() && !loading ? "#fff" : "#374151"}
+              color={input.trim() && !loading ? "#fff" : SCREEN_COLORS.textMuted}
             />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }

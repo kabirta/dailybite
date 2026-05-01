@@ -17,8 +17,8 @@ export const MEAL_PLANS: MealPlan[] = [
     title: "Balanced",
     calories: 2400,
     provider: "Meal Plans by fatsecret",
-    backgroundColor: "#14532D",
-    overlayColor: "#15803D",
+    backgroundColor: "#ffffff",
+    overlayColor: "#cfe9ff",
     emoji: "🥗",
   },
   {
@@ -26,8 +26,8 @@ export const MEAL_PLANS: MealPlan[] = [
     title: "High Protein",
     calories: 2400,
     provider: "Meal Plans by fatsecret",
-    backgroundColor: "#7C2D12",
-    overlayColor: "#C2410C",
+    backgroundColor: "#ffffff",
+    overlayColor: "#e9f5ff",
     emoji: "🥩",
   },
   {
@@ -35,8 +35,8 @@ export const MEAL_PLANS: MealPlan[] = [
     title: "Keto Diet",
     calories: 1800,
     provider: "Meal Plans by fatsecret",
-    backgroundColor: "#1E3A5F",
-    overlayColor: "#1D4ED8",
+    backgroundColor: "#ffffff",
+    overlayColor: "#dff3ff",
     emoji: "🥑",
   },
   {
@@ -44,8 +44,8 @@ export const MEAL_PLANS: MealPlan[] = [
     title: "Low Carb",
     calories: 2000,
     provider: "Meal Plans by fatsecret",
-    backgroundColor: "#4A1D96",
-    overlayColor: "#6D28D9",
+    backgroundColor: "#ffffff",
+    overlayColor: "#f4faff",
     emoji: "🫐",
   },
 ];
@@ -70,6 +70,8 @@ function MealPlanCard({
         height: 108,
         borderRadius: 16,
         backgroundColor: plan.backgroundColor,
+        borderWidth: 1,
+        borderColor: "#d7ebff",
         flexDirection: "row",
         overflow: "hidden",
         marginRight: 12,
@@ -98,7 +100,7 @@ function MealPlanCard({
       >
         <Text
           style={{
-            color: "#fff",
+            color: "#072d66",
             fontWeight: "700",
             fontSize: 14,
             lineHeight: 18,
@@ -108,7 +110,7 @@ function MealPlanCard({
         </Text>
         <Text
           style={{
-            color: "#fff",
+            color: "#072d66",
             fontWeight: "700",
             fontSize: 14,
             lineHeight: 18,
@@ -127,11 +129,11 @@ function MealPlanCard({
           <Ionicons
             name="bookmark-outline"
             size={10}
-            color="rgba(255,255,255,0.65)"
+            color="#5f7492"
           />
           <Text
             style={{
-              color: "rgba(255,255,255,0.65)",
+              color: "#5f7492",
               fontSize: 9,
               flexShrink: 1,
             }}

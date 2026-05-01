@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { View, Text, TouchableOpacity, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SCREEN_COLORS } from "../ScreenBackground";
 
 const TOTAL = 8;
 const ML_PER = 250;
@@ -45,7 +46,9 @@ export function WaterTracker({ target = TOTAL }: Props) {
       style={{
         marginHorizontal: 16,
         marginVertical: 6,
-        backgroundColor: "#0D1526",
+        backgroundColor: SCREEN_COLORS.card,
+        borderWidth: 1,
+        borderColor: SCREEN_COLORS.border,
         borderRadius: 16,
         padding: 16,
         gap: 14,
@@ -54,7 +57,7 @@ export function WaterTracker({ target = TOTAL }: Props) {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Ionicons name="water" size={22} color="#38BDF8" />
-        <Text style={{ color: "#F1F5F9", fontWeight: "700", fontSize: 15 }}>
+        <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 15 }}>
           Daily Water Tracker
         </Text>
       </View>
@@ -70,12 +73,12 @@ export function WaterTracker({ target = TOTAL }: Props) {
         <Text style={{ color: "#38BDF8", fontSize: 28, fontWeight: "800" }}>
           {count}
           <Text
-            style={{ color: "#6B7280", fontSize: 14, fontWeight: "400" }}
+            style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, fontWeight: "400" }}
           >
             /{target} glasses
           </Text>
         </Text>
-        <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>
           {ml} ml · {pct}%
         </Text>
       </View>
@@ -107,9 +110,9 @@ export function WaterTracker({ target = TOTAL }: Props) {
                   height: 40,
                   borderRadius: 6,
                   borderWidth: 1.5,
-                  borderColor: filled ? "#38BDF8" : "#1E3A5F",
+                  borderColor: filled ? "#38BDF8" : SCREEN_COLORS.border,
                   overflow: "hidden",
-                  backgroundColor: "#070E1E",
+                  backgroundColor: "#eef8ff",
                   justifyContent: "flex-end",
                 }}
               >
@@ -121,7 +124,7 @@ export function WaterTracker({ target = TOTAL }: Props) {
                   }}
                 />
               </View>
-              <Text style={{ color: "#374151", fontSize: 9 }}>{i + 1}</Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 9 }}>{i + 1}</Text>
             </TouchableOpacity>
           );
         })}
@@ -131,7 +134,7 @@ export function WaterTracker({ target = TOTAL }: Props) {
       <View
         style={{
           height: 5,
-          backgroundColor: "#1A2744",
+          backgroundColor: "#d8ecff",
           borderRadius: 3,
           overflow: "hidden",
         }}
@@ -150,7 +153,7 @@ export function WaterTracker({ target = TOTAL }: Props) {
         style={{
           textAlign: "center",
           fontSize: 12,
-          color: pct >= 100 ? "#22C55E" : "#6B7280",
+          color: pct >= 100 ? "#22C55E" : SCREEN_COLORS.textMuted,
           fontWeight: pct >= 100 ? "600" : "400",
         }}
       >
