@@ -1,6 +1,9 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  Alert,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +13,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import SignInSheet from "../components/SignInSheet";
+import { signInWithGoogle } from "../src/services/authService";
 
 type GoalDirection = "lose_weight" | "maintain_weight" | "work_that_out";
 type MainGoalOption =
@@ -132,6 +137,51 @@ function parseIsoDate(value: string) {
   }
 
   return parsed;
+}
+
+function getGoogleSignInErrorMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    (error.message.includes("DEVELOPER_ERROR") ||
+      error.message.includes("code 10") ||
+      error.message.includes("Developer console is not set up correctly"))
+  ) {
+    return "Google Sign-In is blocked by an Android OAuth configuration mismatch. Add this build's SHA-1 fingerprint to the Firebase Android app for com.nutrimed.ai, enable Google in Firebase Authentication, then download and replace google-services.json.";
+  }
+
+  if (
+    typeof error === "object" &&
+    error &&
+    "code" in error &&
+    error.code === "auth/account-exists-with-different-credential"
+  ) {
+    return "This email is already linked to another sign-in method.";
+  }
+
+  if (
+    typeof error === "object" &&
+    error &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    (error.message.includes("RNGoogleSignin") ||
+      error.message.includes("TurboModuleRegistry"))
+  ) {
+    return "Native Google Sign-In is not available in this build yet. Rebuild the app and open the rebuilt app instead of Expo Go.";
+  }
+
+  if (
+    typeof error === "object" &&
+    error &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return "Something went wrong while signing in with Google.";
 }
 
 function calculateAge(date: Date) {
@@ -296,6 +346,8 @@ export default function OnboardingScreen() {
   const router = useRouter();
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [isSignInSheetVisible, setIsSignInSheetVisible] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [answers, setAnswers] = useState<OnboardingAnswers>({
     firstName: "",
     direction: null,
@@ -309,6 +361,7 @@ export default function OnboardingScreen() {
     sex: null,
     activityLevel: null,
   });
+  const sheetAnimation = useRef(new Animated.Value(0)).current;
 
   const currentStep = FLOW_STEPS[stepIndex];
   const trimmedName = answers.firstName.trim();
@@ -361,6 +414,11 @@ export default function OnboardingScreen() {
   })();
 
   const goBack = () => {
+    if (isSignInSheetVisible) {
+      closeSignInSheet();
+      return;
+    }
+
     if (stepIndex === 0) {
       router.back();
       return;
@@ -369,13 +427,59 @@ export default function OnboardingScreen() {
     setStepIndex((prev) => prev - 1);
   };
 
+  const openSignInSheet = () => {
+    setIsSignInSheetVisible(true);
+    Animated.spring(sheetAnimation, {
+      toValue: 1,
+      useNativeDriver: true,
+      damping: 18,
+      stiffness: 170,
+      mass: 0.8,
+    }).start();
+  };
+
+  const closeSignInSheet = (onClosed?: () => void) => {
+    Animated.timing(sheetAnimation, {
+      toValue: 0,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setIsSignInSheetVisible(false);
+        onClosed?.();
+      }
+    });
+  };
+
+  const handleGoogleLogin = async () => {
+    if (isGoogleSigningIn) {
+      return;
+    }
+
+    try {
+      setIsGoogleSigningIn(true);
+      const result = await signInWithGoogle();
+
+      if (!result) {
+        return;
+      }
+
+      closeSignInSheet(() => router.replace("/diary"));
+    } catch (error) {
+      Alert.alert("Google Sign-In Failed", getGoogleSignInErrorMessage(error));
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
+  };
+
   const goNext = () => {
     if (!isCurrentStepValid) {
       return;
     }
 
     if (isLastStep) {
-      router.replace("/login");
+      openSignInSheet();
       return;
     }
 
@@ -948,6 +1052,16 @@ export default function OnboardingScreen() {
           ) : null}
         </View>
       </KeyboardAvoidingView>
+
+      {isSignInSheetVisible ? (
+        <SignInSheet
+          sheetAnimation={sheetAnimation}
+          onClose={() => closeSignInSheet()}
+          onEmailLogin={() => closeSignInSheet(() => router.push("/login"))}
+          onGoogleLogin={handleGoogleLogin}
+          isGoogleLoading={isGoogleSigningIn}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
