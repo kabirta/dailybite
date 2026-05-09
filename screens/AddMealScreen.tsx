@@ -1,6 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
+  Image,
   ScrollView,
   Text,
   TextInput,
@@ -12,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { getConfiguredApiBaseUrl, listRecipes, searchFoods } from "../src/services/backendApi";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -23,6 +26,26 @@ const TABS = [
   "MOST EATEN",
   "SAVED MEALS",
 ] as const;
+
+type CatalogFood = {
+  _id: string;
+  name: string;
+  brand?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  servingSize?: number;
+};
+
+type CatalogRecipe = {
+  _id: string;
+  title: string;
+  serves: number;
+  prepTime: number;
+  cookTime: number;
+  imageUrl?: string;
+};
 
 function formatHeaderDate(date: Date): string {
   const days = [
@@ -116,15 +139,39 @@ function CookBookTab() {
 
 // ── Recipes Tab ───────────────────────────────────────────────────────────────
 
-const SAMPLE_RECIPES = [
-  { id: "1", title: "Oatmeal Bowl", time: "10 min", emoji: "🥣" },
-  { id: "2", title: "Egg Salad", time: "15 min", emoji: "🥚" },
-  { id: "3", title: "Banana Smoothie", time: "5 min", emoji: "🍌" },
-  { id: "4", title: "Avocado Toast", time: "8 min", emoji: "🥑" },
-];
-
 function RecipesTab() {
   const [query, setQuery] = useState("");
+  const [recipes, setRecipes] = useState<CatalogRecipe[]>([]);
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const data = await listRecipes(query);
+        if (isActive) {
+          setRecipes(data);
+        }
+      } catch (error) {
+        if (isActive) {
+          setRecipes([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(load, 250);
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   return (
     <ScrollView
@@ -185,58 +232,78 @@ function RecipesTab() {
         </TouchableOpacity>
       </View>
 
-      {/* 2-column grid */}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-        {SAMPLE_RECIPES.map((recipe) => (
-          <TouchableOpacity
-            key={recipe.id}
-            activeOpacity={0.8}
-            style={{
-              width: (SCREEN_WIDTH - 32 - 12) / 2,
-              backgroundColor: SCREEN_COLORS.card,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: SCREEN_COLORS.border,
-              overflow: "hidden",
-            }}
-          >
-            {/* Thumbnail */}
-            <View
-              style={{
-                height: 110,
-                backgroundColor: SCREEN_COLORS.cardSoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ fontSize: 42 }}>{recipe.emoji}</Text>
-              {/* Time badge */}
-              <View
+      {isLoading ? (
+        <ActivityIndicator color={SCREEN_COLORS.primary} />
+      ) : recipes.length === 0 ? (
+        <EmptyState
+          icon="restaurant-outline"
+          title="No recipes found"
+          subtitle="Admin recipes added to the database will appear here."
+        />
+      ) : (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+          {recipes.map((recipe) => {
+            const selected = selectedRecipeId === recipe._id;
+            const totalTime = Number(recipe.prepTime ?? 0) + Number(recipe.cookTime ?? 0);
+
+            return (
+              <TouchableOpacity
+                key={recipe._id}
+                activeOpacity={0.8}
+                onPress={() => setSelectedRecipeId(selected ? null : recipe._id)}
                 style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  backgroundColor: "rgba(0,0,0,0.6)",
-                  borderRadius: 8,
-                  paddingHorizontal: 7,
-                  paddingVertical: 3,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
+                  width: (SCREEN_WIDTH - 32 - 12) / 2,
+                  backgroundColor: SCREEN_COLORS.card,
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: selected ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
+                  overflow: "hidden",
                 }}
               >
-                <Ionicons name="time-outline" size={11} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 11 }}>{recipe.time}</Text>
-              </View>
-            </View>
-            <View style={{ padding: 10 }}>
-              <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, fontWeight: "600" }}>
-                {recipe.title}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+                <View
+                  style={{
+                    height: 110,
+                    backgroundColor: SCREEN_COLORS.cardSoft,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {recipe.imageUrl ? (
+                    <Image source={{ uri: recipe.imageUrl }} style={{ width: "100%", height: "100%" }} />
+                  ) : (
+                    <Ionicons name="restaurant-outline" size={40} color={SCREEN_COLORS.primary} />
+                  )}
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      backgroundColor: "rgba(0,0,0,0.6)",
+                      borderRadius: 8,
+                      paddingHorizontal: 7,
+                      paddingVertical: 3,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="time-outline" size={11} color="#fff" />
+                    <Text style={{ color: "#fff", fontSize: 11 }}>{totalTime} min</Text>
+                  </View>
+                </View>
+                <View style={{ padding: 10, gap: 4 }}>
+                  <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, fontWeight: "600" }}>
+                    {recipe.title}
+                  </Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>
+                    Serves {recipe.serves}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -246,6 +313,46 @@ function RecipesTab() {
 function FoodTab() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [foods, setFoods] = useState<CatalogFood[]>([]);
+  const [selectedFoodIds, setSelectedFoodIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let isActive = true;
+
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const data = await searchFoods(query);
+        if (isActive) {
+          setFoods(data);
+          setLoadError("");
+        }
+      } catch (error) {
+        if (isActive) {
+          setFoods([]);
+          setLoadError(error instanceof Error ? error.message : "Could not load foods");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(load, 250);
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  const toggleFood = (foodId: string) => {
+    setSelectedFoodIds((current) =>
+      current.includes(foodId) ? current.filter((id) => id !== foodId) : [...current, foodId],
+    );
+  };
 
   return (
     <ScrollView
@@ -288,11 +395,68 @@ function FoodTab() {
         )}
       </View>
 
-      <EmptyState
-        icon="nutrition-outline"
-        title="Search for Food"
-        subtitle="Find foods from our database to log your meals."
-      />
+      {isLoading ? (
+        <ActivityIndicator color={SCREEN_COLORS.primary} />
+      ) : loadError ? (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Could not load foods"
+          subtitle={`${loadError}. API: ${getConfiguredApiBaseUrl()}`}
+        />
+      ) : foods.length === 0 ? (
+        <EmptyState
+          icon="nutrition-outline"
+          title="No foods found"
+          subtitle="Admin foods added to the database will appear here."
+        />
+      ) : (
+        <View style={{ gap: 10 }}>
+          {foods.map((food) => {
+            const selected = selectedFoodIds.includes(food._id);
+
+            return (
+              <TouchableOpacity
+                key={food._id}
+                activeOpacity={0.82}
+                onPress={() => toggleFood(food._id)}
+                style={{
+                  backgroundColor: SCREEN_COLORS.card,
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: selected ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
+                  padding: 14,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: SCREEN_COLORS.text, fontSize: 15, fontWeight: "700" }}>
+                    {food.name}
+                  </Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
+                    {food.brand ? `${food.brand} · ` : ""}{food.servingSize ?? 100}g serving
+                  </Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 6 }}>
+                    P {food.protein}g · C {food.carbs}g · F {food.fat}g
+                  </Text>
+                </View>
+                <View style={{ alignItems: "flex-end", gap: 8 }}>
+                  <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, fontWeight: "800" }}>
+                    {Math.round(food.calories)} kcal
+                  </Text>
+                  <Ionicons
+                    name={selected ? "checkmark-circle" : "add-circle-outline"}
+                    size={24}
+                    color={selected ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </ScrollView>
   );
 }

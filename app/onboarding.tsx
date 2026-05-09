@@ -15,8 +15,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import SignInSheet from "../components/SignInSheet";
 import { signInWithGoogle } from "../src/services/authService";
+import { loginWithFirebaseUser } from "../src/services/backendApi";
 
-type GoalDirection = "lose_weight" | "maintain_weight" | "work_that_out";
+type GoalDirection = "lose_weight" | "maintain_weight" | "gain_weight" | "work_that_out";
 type MainGoalOption =
   | "understand_food"
   | "manage_condition"
@@ -465,6 +466,8 @@ export default function OnboardingScreen() {
         return;
       }
 
+      await loginWithFirebaseUser(result.user, answers);
+
       closeSignInSheet(() => router.replace("/diary"));
     } catch (error) {
       Alert.alert("Google Sign-In Failed", getGoogleSignInErrorMessage(error));
@@ -596,6 +599,11 @@ export default function OnboardingScreen() {
               label="Maintain my weight"
               selected={answers.direction === "maintain_weight"}
               onPress={() => setAnswers((prev) => ({ ...prev, direction: "maintain_weight" }))}
+            />
+            <OptionCard
+              label="Gain weight"
+              selected={answers.direction === "gain_weight"}
+              onPress={() => setAnswers((prev) => ({ ...prev, direction: "gain_weight" }))}
             />
             <OptionCard
               label="Work that out"
