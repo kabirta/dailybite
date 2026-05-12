@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native build output
+.kotlin/
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# local env files
+.env
+.env.*
+!.env.example
+.env*.local
+credentials.json
+
+# OS/editor
+.DS_Store
+*.tsbuildinfo
