@@ -43,7 +43,7 @@
       "@react-native-google-signin/google-signin"
     ],
     "extra": {
-      "apiBaseUrl": "http://192.168.29.111:5001/api/v1",
+      "apiBaseUrl": "https://nutrimed-backend.vercel.app/api/v1",
 
       "eas": {
         "projectId": "8bb06112-baa7-4234-bb48-8057d31e1c98"

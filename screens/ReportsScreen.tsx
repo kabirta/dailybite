@@ -14,12 +14,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { getDiaryAnalytics } from "../src/services/backendApi";
 
 // ─── Data (unchanged) ─────────────────────────────────────────────────────────
 
 const REPORT_TABS = [
   { key: "calories", label: "CALORIES" },
-  { key: "steps", label: "STEPS" },
+  { key: "steps", label: "WATER" },
   { key: "macros", label: "MACROS" },
   { key: "nutrients", label: "NUTRIENTS" },
 ] as const;
@@ -320,7 +321,27 @@ function WeekPicker() {
 
 // ─── Calories Panel ───────────────────────────────────────────────────────────
 
-function CaloriesPanel() {
+function CaloriesPanel({ analytics, report }: { analytics: any; report: any }) {
+  const totals = report?.totals ?? {};
+  const meals = report?.meals ?? {};
+  const dailyCalories = Math.round(totals.calories ?? 0);
+  const days = analytics?.days ?? [];
+  const weeklyCalories = days.reduce((sum: number, day: any) => sum + Number(day?.caloriesConsumed ?? 0), 0);
+  const calorieGoal = Math.round(report?.calorieTarget ?? 3000);
+  const mealRows = MEAL_ROWS.map((meal) => {
+    const key = meal.label === "Snacks/Other" ? "snacks" : meal.label.toLowerCase();
+    const calories = Math.round(meals[key]?.totalCalories ?? 0);
+    return {
+      ...meal,
+      calories,
+      pct: dailyCalories ? Math.round((calories / dailyCalories) * 100) : 0,
+    };
+  });
+  const foodsCount = Object.values(meals).reduce(
+    (count: number, meal: any) => count + (meal?.foods?.length ?? 0),
+    0,
+  );
+
   return (
     <View style={{ gap: 12 }}>
       {/* Calories chart card */}
@@ -337,7 +358,7 @@ function CaloriesPanel() {
               lineHeight: 56,
             }}
           >
-            0
+            {Math.round(weeklyCalories || dailyCalories)}
           </Text>
           <Text style={{ color: TEXT_SECONDARY, fontSize: 12, marginBottom: 14 }}>
             kcal
@@ -353,7 +374,7 @@ function CaloriesPanel() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: TEXT_SECONDARY }} />
               <Text style={{ color: TEXT_SECONDARY, fontSize: 13 }}>
-                Daily Avg: 0
+                Daily Total: {dailyCalories}
               </Text>
             </View>
             <View
@@ -369,7 +390,7 @@ function CaloriesPanel() {
             >
               <Ionicons name="flag" size={12} color={ACCENT} />
               <Text style={{ color: ACCENT, fontSize: 12, fontWeight: "600" }}>
-                Goal: 3000 kcal
+                Goal: {calorieGoal} kcal
               </Text>
             </View>
           </View>
@@ -384,8 +405,12 @@ function CaloriesPanel() {
             }}
           />
 
-          <ChartGrid />
-          <DayLabels />
+          <TrendBars
+            days={days.length ? days : [report]}
+            getValue={(day) => Number(day?.caloriesConsumed ?? day?.totals?.calories ?? 0)}
+            color={ACCENT}
+            unit="kcal"
+          />
         </View>
 
         {/* Column header */}
@@ -414,7 +439,7 @@ function CaloriesPanel() {
         </View>
 
         {/* Meal rows */}
-        {MEAL_ROWS.map((meal) => (
+        {mealRows.map((meal) => (
           <View key={meal.label}>
             <RowDivider />
             <View
@@ -446,7 +471,7 @@ function CaloriesPanel() {
                   fontSize: 14,
                 }}
               >
-                (0%)
+                ({meal.pct}%)
               </Text>
               <Text
                 style={{
@@ -457,7 +482,7 @@ function CaloriesPanel() {
                   fontWeight: "600",
                 }}
               >
-                -
+                {meal.calories || "-"}
               </Text>
             </View>
           </View>
@@ -504,10 +529,10 @@ function CaloriesPanel() {
             Total
           </Text>
           <Text style={{ width: 90, textAlign: "center", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
-            -
+            {foodsCount || "-"}
           </Text>
           <Text style={{ width: 72, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
-            -
+            {dailyCalories || "-"}
           </Text>
         </View>
       </Card>
@@ -517,11 +542,13 @@ function CaloriesPanel() {
 
 // ─── Macros Panel ─────────────────────────────────────────────────────────────
 
-function StepsPanel() {
-  const weeklySteps = STEP_ROWS.reduce((total, row) => total + row.steps, 0);
-  const weeklyGoal = STEP_GOAL * STEP_ROWS.length;
-  const dailyAverage = Math.round(weeklySteps / STEP_ROWS.length);
-  const weeklyPct = Math.min(weeklySteps / Math.max(weeklyGoal, 1), 1);
+function HydrationPanel({ analytics }: { analytics: any }) {
+  const days = analytics?.days ?? [];
+  const weeklyWater = days.reduce((total: number, day: any) => total + Number(day?.water?.totalMl ?? 0), 0);
+  const dailyAverage = days.length ? Math.round(weeklyWater / days.length) : 0;
+  const latestGoal = Number(days[days.length - 1]?.water?.goalMl ?? 2500);
+  const weeklyGoal = latestGoal * Math.max(days.length, 1);
+  const weeklyPct = Math.min(weeklyWater / Math.max(weeklyGoal, 1), 1);
 
   return (
     <View style={{ gap: 12 }}>
@@ -546,7 +573,7 @@ function StepsPanel() {
                   textTransform: "uppercase",
                 }}
               >
-                Weekly Steps
+                Weekly Hydration
               </Text>
               <Text
                 style={{
@@ -556,10 +583,10 @@ function StepsPanel() {
                   lineHeight: 56,
                 }}
               >
-                {weeklySteps.toLocaleString()}
+                {weeklyWater.toLocaleString()}
               </Text>
               <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
-                Daily Avg: {dailyAverage.toLocaleString()} steps
+                Daily Avg: {dailyAverage.toLocaleString()} ml
               </Text>
             </View>
 
@@ -573,7 +600,7 @@ function StepsPanel() {
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="footsteps-outline" size={30} color={ACCENT} />
+              <Ionicons name="water-outline" size={30} color={ACCENT} />
             </View>
           </View>
 
@@ -628,10 +655,10 @@ function StepsPanel() {
               }}
             >
               <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
-                {weeklySteps.toLocaleString()} steps
+                {weeklyWater.toLocaleString()} ml
               </Text>
               <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
-                Goal: {weeklyGoal.toLocaleString()}
+                Goal: {weeklyGoal.toLocaleString()} ml
               </Text>
             </View>
           </View>
@@ -639,14 +666,18 @@ function StepsPanel() {
       </Card>
 
       <Card>
-        <SectionTitle text="Daily Step Count" />
+        <SectionTitle text="Daily Hydration" />
         <RowDivider />
 
-        {STEP_ROWS.map((row, index) => {
-          const progress = Math.min(row.steps / STEP_GOAL, 1);
+        {days.map((day: any, index: number) => {
+          const date = day?.date ? new Date(day.date) : new Date();
+          const totalMl = Number(day?.water?.totalMl ?? 0);
+          const goalMl = Number(day?.water?.goalMl ?? latestGoal);
+          const progress = Math.min(totalMl / Math.max(goalMl, 1), 1);
+          const label = date.toLocaleDateString(undefined, { weekday: "long" });
 
           return (
-            <View key={row.day}>
+            <View key={`${day?.date ?? index}`}>
               <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 10 }}>
                 <View
                   style={{
@@ -667,16 +698,16 @@ function StepsPanel() {
                       }}
                     >
                       <Text style={{ color: ACCENT, fontSize: 12, fontWeight: "800" }}>
-                        {row.short}
+                        {label.slice(0, 2)}
                       </Text>
                     </View>
                     <Text style={{ color: TEXT_PRIMARY, fontSize: 14, fontWeight: "600" }}>
-                      {row.day}
+                      {label}
                     </Text>
                   </View>
 
                   <Text style={{ color: TEXT_PRIMARY, fontSize: 15, fontWeight: "700" }}>
-                    {row.steps.toLocaleString()}
+                    {totalMl.toLocaleString()} ml
                   </Text>
                 </View>
 
@@ -698,7 +729,7 @@ function StepsPanel() {
                   />
                 </View>
               </View>
-              {index < STEP_ROWS.length - 1 ? <RowDivider /> : null}
+              {index < days.length - 1 ? <RowDivider /> : null}
             </View>
           );
         })}
@@ -707,7 +738,66 @@ function StepsPanel() {
   );
 }
 
-function MacrosPanel() {
+function TrendBars({
+  days,
+  getValue,
+  color,
+  unit,
+}: {
+  days: any[];
+  getValue: (day: any) => number;
+  color: string;
+  unit: string;
+}) {
+  const values = days.map((day) => Math.max(0, getValue(day)));
+  const maxValue = Math.max(...values, 1);
+
+  return (
+    <View style={{ height: 172, flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
+      {days.map((day, index) => {
+        const value = values[index] ?? 0;
+        const barHeight = Math.max(8, (value / maxValue) * 150);
+        const date = day?.date ? new Date(day.date) : new Date();
+
+        return (
+          <View key={`${day?.date ?? index}`} style={{ flex: 1, alignItems: "center", gap: 6 }}>
+            <View
+              style={{
+                width: "100%",
+                height: barHeight,
+                borderRadius: 8,
+                backgroundColor: value > 0 ? color : "#d8ecff",
+              }}
+            />
+            <Text style={{ color: TEXT_SECONDARY, fontSize: 10, textAlign: "center" }}>
+              {date.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}
+            </Text>
+          </View>
+        );
+      })}
+      <Text
+        style={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          color: TEXT_SECONDARY,
+          fontSize: 11,
+        }}
+      >
+        {Math.round(maxValue).toLocaleString()} {unit}
+      </Text>
+    </View>
+  );
+}
+
+function MacrosPanel({ report }: { report: any }) {
+  const totals = report?.totals ?? {};
+  const targets = report?.macroTargets ?? {};
+  const macroRows = [
+    { label: "Carbohydrate", color: "#4DA8D8", total: `${Math.round(totals.carbs ?? 0)}g`, goal: `${Math.round(targets.carbs ?? 0) || "-"}g` },
+    { label: "Fat", color: "#D3A017", total: `${Math.round(totals.fat ?? 0)}g`, goal: `${Math.round(targets.fat ?? 0) || "-"}g` },
+    { label: "Protein", color: "#C9757E", total: `${Math.round(totals.protein ?? 0)}g`, goal: `${Math.round(targets.protein ?? 0) || "-"}g` },
+  ];
   return (
     <View style={{ gap: 12 }}>
       {/* Macros chart card */}
@@ -740,7 +830,7 @@ function MacrosPanel() {
         </View>
 
         {/* Macro rows */}
-        {MACRO_ROWS.map((macro) => (
+        {macroRows.map((macro) => (
           <View key={macro.label}>
             <RowDivider />
             <View
@@ -765,7 +855,7 @@ function MacrosPanel() {
                 </Text>
               </View>
               <Text style={{ width: 80, textAlign: "right", color: TEXT_SECONDARY, fontSize: 14, marginRight: 16 }}>
-                0%
+                {macro.total}
               </Text>
               <Text style={{ width: 64, textAlign: "right", color: TEXT_PRIMARY, fontSize: 14, fontWeight: "600" }}>
                 {macro.goal}
@@ -818,13 +908,13 @@ function MacrosPanel() {
             Total
           </Text>
           <Text style={{ width: 72, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
-            -
+            {Math.round(totals.carbs ?? 0) || "-"}
           </Text>
           <Text style={{ width: 64, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
-            -
+            {Math.round(totals.fat ?? 0) || "-"}
           </Text>
           <Text style={{ width: 64, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
-            -
+            {Math.round(totals.protein ?? 0) || "-"}
           </Text>
         </View>
       </Card>
@@ -834,7 +924,24 @@ function MacrosPanel() {
 
 // ─── Nutrients Panel ──────────────────────────────────────────────────────────
 
-function NutrientsPanel() {
+function NutrientsPanel({ report }: { report: any }) {
+  const totals = report?.totals ?? {};
+  const targets = report?.macroTargets ?? {};
+  const calorieGoal = Math.round(report?.calorieTarget ?? 3000);
+  const nutrientRows = [
+    { label: "Calories (kcal)", total: Math.round(totals.calories ?? 0), goal: String(calorieGoal), delta: Math.round(report?.remainingCalories ?? 0) },
+    { label: "Protein (g)", total: Math.round(totals.protein ?? 0), goal: Math.round(targets.protein ?? 0) || "-", delta: "-" },
+    { label: "Carbohydrate (g)", total: Math.round(totals.carbs ?? 0), goal: Math.round(targets.carbs ?? 0) || "-", delta: "-" },
+    { label: "Fiber (g)", total: Math.round(totals.fiber ?? 0), goal: "30", delta: "-" },
+    { label: "Sugar (g)", total: Math.round(totals.sugar ?? 0), goal: "-", delta: "-" },
+    { label: "Fat (g)", total: Math.round(totals.fat ?? 0), goal: Math.round(targets.fat ?? 0) || "-", delta: "-" },
+    { label: "Cholesterol (mg)", total: Math.round(totals.cholesterol ?? 0), goal: "300", delta: "-" },
+    { label: "Sodium (mg)", total: Math.round(totals.sodium ?? 0), goal: "2300", delta: "-" },
+    { label: "Potassium (mg)", total: Math.round(totals.potassium ?? 0), goal: "3500", delta: "-" },
+    { label: "Water (ml)", total: Math.round(report?.water?.totalMl ?? 0), goal: Math.round(report?.water?.goalMl ?? 0) || "-", delta: Math.round(report?.water?.remainingMl ?? 0) || "-" },
+    { label: "Sleep (min)", total: Math.round(report?.sleep?.totalMinutes ?? 0), goal: Math.round(report?.sleep?.goalMinutes ?? 0) || "-", delta: "-" },
+    { label: "Exercise (min)", total: Math.round(report?.exercise?.totalMinutes ?? 0), goal: Math.round(report?.exercise?.goalMinutes ?? 0) || "-", delta: Math.round(report?.exercise?.caloriesBurned ?? 0) || "-" },
+  ];
   return (
     <Card>
       <SectionTitle text="Nutrients" />
@@ -869,7 +976,7 @@ function NutrientsPanel() {
       </View>
 
       {/* Nutrient rows */}
-      {NUTRIENT_ROWS.map((nutrient, index) => (
+      {nutrientRows.map((nutrient, index) => (
         <View key={nutrient.label}>
           <RowDivider />
           <View
@@ -912,6 +1019,8 @@ function NutrientsPanel() {
 
 export default function ReportsScreen() {
   const [activeTab, setActiveTab] = useState<ReportTabKey>("nutrients");
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [report, setReport] = useState<any>(null);
   const pagerRef = useRef<ScrollView>(null);
   const { width: screenWidth } = useWindowDimensions();
   const pageWidth = Math.max(screenWidth - 24, 1);
@@ -920,6 +1029,27 @@ export default function ReportsScreen() {
     const activeTabIndex = REPORT_TABS.findIndex((tab) => tab.key === activeTab);
     pagerRef.current?.scrollTo({ x: activeTabIndex * pageWidth, animated: false });
   }, [activeTab, pageWidth]);
+
+  useEffect(() => {
+    let isActive = true;
+    getDiaryAnalytics({ range: "week" })
+      .then((data) => {
+        if (isActive) {
+          setAnalytics(data);
+          setReport(data?.days?.[data.days.length - 1] ?? null);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setAnalytics(null);
+          setReport(null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const onTabPress = (tabKey: ReportTabKey) => {
     const tabIndex = REPORT_TABS.findIndex((tab) => tab.key === tabKey);
@@ -1002,16 +1132,16 @@ export default function ReportsScreen() {
             scrollEventThrottle={16}
           >
             <View style={{ width: pageWidth }}>
-              <CaloriesPanel />
+              <CaloriesPanel analytics={analytics} report={report} />
             </View>
             <View style={{ width: pageWidth }}>
-              <StepsPanel />
+              <HydrationPanel analytics={analytics} />
             </View>
             <View style={{ width: pageWidth }}>
-              <MacrosPanel />
+              <MacrosPanel report={report} />
             </View>
             <View style={{ width: pageWidth }}>
-              <NutrientsPanel />
+              <NutrientsPanel report={report} />
             </View>
           </ScrollView>
         </ScrollView>

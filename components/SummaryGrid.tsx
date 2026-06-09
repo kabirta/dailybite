@@ -51,6 +51,16 @@ interface SummaryGridProps {
   remaining?: number;
   consumed?: number;
   goal?: number;
+  macros?: {
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
+  macroTargets?: {
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -59,6 +69,8 @@ export function SummaryGrid({
   remaining = 3000,
   consumed = 0,
   goal = 3000,
+  macros,
+  macroTargets,
   isCollapsed = false,
   onToggleCollapse,
 }: SummaryGridProps) {
@@ -98,7 +110,6 @@ export function SummaryGrid({
         />
       </TouchableOpacity>
 
-      {/* Summary card */}
       <View
         style={{
           backgroundColor: SCREEN_COLORS.card,
@@ -136,6 +147,53 @@ export function SummaryGrid({
 
         <PixelGrid filledCells={filledCells} />
       </View>
+
+      {!isCollapsed && macroTargets && (
+        <View
+          style={{
+            backgroundColor: SCREEN_COLORS.card,
+            borderWidth: 1,
+            borderColor: SCREEN_COLORS.border,
+            borderRadius: 16,
+            padding: 14,
+            marginTop: 8,
+            gap: 10,
+          }}
+        >
+          {[
+            { key: "protein", label: "Protein", color: "#C9757E" },
+            { key: "carbs", label: "Carbs", color: "#4DA8D8" },
+            { key: "fat", label: "Fat", color: "#D3A017" },
+          ].map((item) => {
+            const total = Math.round(macros?.[item.key as keyof typeof macros] ?? 0);
+            const target = Math.round(macroTargets?.[item.key as keyof typeof macroTargets] ?? 0);
+            const progress = Math.min(total / Math.max(target, 1), 1);
+
+            return (
+              <View key={item.key} style={{ gap: 5 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <Text style={{ color: SCREEN_COLORS.text, fontSize: 12, fontWeight: "600" }}>
+                    {item.label}
+                  </Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>
+                    {total}g / {target || "-"}g
+                  </Text>
+                </View>
+                <View style={{ height: 6, borderRadius: 999, backgroundColor: "#d8ecff", overflow: "hidden" }}>
+                  <View
+                    style={{
+                      width: `${progress * 100}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      backgroundColor: item.color,
+                    }}
+                  />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }

@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { onAuthStateChanged } from "firebase/auth";
 
 import { auth } from "../config/firebase";
+import { clearBackendSession, ensureBackendSession } from "../services/backendApi";
 import HomeScreen from "../screens/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 
@@ -24,8 +25,24 @@ export default function AppNavigator() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+      void (async () => {
+        if (firebaseUser) {
+          try {
+            await ensureBackendSession();
+            setUser(firebaseUser);
+          } catch (error) {
+            console.warn("Could not create backend session:", error);
+            setUser(null);
+          } finally {
+            setLoading(false);
+          }
+          return;
+        }
+
+        await clearBackendSession();
+        setUser(null);
+        setLoading(false);
+      })();
     });
 
     return unsubscribe;

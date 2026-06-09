@@ -5,22 +5,36 @@ import { ActivityIndicator, View } from "react-native";
 
 import WelcomeScreen from "../components/WelcomeScreen";
 import { auth } from "../src/config/firebase";
+import { clearBackendSession, ensureBackendSession } from "../src/services/backendApi";
 
 export default function IndexScreen() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
+    let isActive = true;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        router.replace("/diary");
-        return;
-      }
+      void (async () => {
+        if (firebaseUser) {
+          try {
+            await ensureBackendSession();
+            if (isActive) router.replace("/diary");
+          } catch (error) {
+            console.warn("Could not create backend session:", error);
+            if (isActive) setIsCheckingAuth(false);
+          }
+          return;
+        }
 
-      setIsCheckingAuth(false);
+        await clearBackendSession();
+        if (isActive) setIsCheckingAuth(false);
+      })();
     });
 
-    return unsubscribe;
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, [router]);
 
   if (isCheckingAuth) {

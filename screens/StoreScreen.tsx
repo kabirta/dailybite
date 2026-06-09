@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   Modal,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -14,59 +17,61 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { createStoreOrder, listStoreProducts, verifyStorePayment } from "../src/services/backendApi";
+
+declare const require: any;
 
 type Product = {
-  id: string;
+  _id: string;
   name: string;
   shortDescription: string;
-  fullDescription: string;
+  fullDescription?: string;
   price: number;
-  image: string;
-  accent: string;
-  benefits: string[];
+  currency?: string;
+  image?: string;
+  accent?: string;
+  benefits?: string[];
+  stock?: number;
 };
 
-const PRODUCTS: Product[] = [
-  {
-    id: "hb-protein-plus",
-    name: "Protein Plus Shake",
-    shortDescription: "High-protein recovery blend for lean muscle and steady energy.",
-    fullDescription:
-      "A smooth daily shake crafted for active routines. It combines whey protein, cocoa, and micronutrients to support recovery, appetite control, and better post-workout nutrition.",
-    price: 1299,
-    image:
-      "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80",
-    accent: "#22C55E",
-    benefits: ["24g protein", "Low sugar", "Post-workout recovery"],
-  },
-  {
-    id: "hb-green-detox",
-    name: "Green Detox Mix",
-    shortDescription: "Daily greens powder with fiber, herbs, and digestive support.",
-    fullDescription:
-      "A balanced greens formula designed for busy mornings. Each serving includes spinach, moringa, mint, and digestive-friendly fiber to support lighter meals and a cleaner nutrition routine.",
-    price: 899,
-    image:
-      "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80",
-    accent: "#10B981",
-    benefits: ["Digestive support", "Daily greens", "Easy morning mix"],
-  },
-  {
-    id: "hb-omega-heart",
-    name: "Omega Heart Capsules",
-    shortDescription: "Simple omega support for heart health and everyday wellness.",
-    fullDescription:
-      "These softgels are built for consistent daily use, giving users a clean source of omega fatty acids that can fit easily into any long-term wellness routine.",
-    price: 749,
-    image:
-      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=900&q=80",
-    accent: "#38BDF8",
-    benefits: ["Heart support", "Easy daily dose", "60 capsules"],
-  },
-];
+type ShippingAddress = {
+  name: string;
+  phone: string;
+  line1: string;
+  city: string;
+  state: string;
+  postalCode: string;
+};
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80";
+
+const EMPTY_ADDRESS: ShippingAddress = {
+  name: "",
+  phone: "",
+  line1: "",
+  city: "",
+  state: "",
+  postalCode: "",
+};
 
 function formatPrice(price: number) {
-  return `Rs ${price.toLocaleString("en-IN")}`;
+  return `Rs ${Number(price || 0).toLocaleString("en-IN")}`;
+}
+
+function getSafeAccent(accent?: string) {
+  const value = String(accent || "").trim();
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value)
+    ? value
+    : SCREEN_COLORS.primary;
+}
+
+function getRazorpayCheckout() {
+  try {
+    return require("react-native-razorpay");
+  } catch {
+    return null;
+  }
 }
 
 function ProductCard({
@@ -76,107 +81,70 @@ function ProductCard({
   product: Product;
   onBuyNow: (product: Product) => void;
 }) {
+  const accent = getSafeAccent(product.accent);
+
   return (
     <View
       style={{
         backgroundColor: SCREEN_COLORS.card,
-        borderRadius: 24,
-        marginBottom: 18,
+        borderRadius: 18,
+        marginBottom: 16,
         overflow: "hidden",
         borderWidth: 1,
         borderColor: SCREEN_COLORS.border,
       }}
     >
       <Image
-        source={{ uri: product.image }}
-        style={{ width: "100%", height: 190 }}
+        source={{ uri: product.image || FALLBACK_IMAGE }}
+        style={{ width: "100%", height: 178 }}
         resizeMode="cover"
       />
 
-      <View style={{ padding: 18 }}>
-        <View
-          style={{
-            alignSelf: "flex-start",
-            backgroundColor: "rgba(34,197,94,0.12)",
-            borderRadius: 999,
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            marginBottom: 12,
-          }}
-        >
-          <Text style={{ color: product.accent, fontWeight: "700", fontSize: 12 }}>
-            Featured Product
-          </Text>
-        </View>
-
-        <Text
-          style={{
-            color: SCREEN_COLORS.text,
-            fontSize: 21,
-            fontWeight: "800",
-            marginBottom: 8,
-          }}
-        >
+      <View style={{ padding: 16 }}>
+        <Text style={{ color: accent, fontWeight: "800", fontSize: 12, marginBottom: 8 }}>
+          {product.stock === 0 ? "Out of stock" : "DailyBite Store"}
+        </Text>
+        <Text style={{ color: SCREEN_COLORS.text, fontSize: 20, fontWeight: "800", marginBottom: 8 }}>
           {product.name}
         </Text>
-
-        <Text
-          style={{
-            color: "#94A3B8",
-            fontSize: 14,
-            lineHeight: 20,
-            marginBottom: 16,
-          }}
-        >
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 20, marginBottom: 14 }}>
           {product.shortDescription}
         </Text>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
-          {product.benefits.map((benefit) => (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          {(product.benefits || []).slice(0, 3).map((benefit) => (
             <View
               key={benefit}
               style={{
-                backgroundColor: "#111C33",
+                backgroundColor: SCREEN_COLORS.cardSoft,
                 borderRadius: 999,
                 paddingHorizontal: 10,
                 paddingVertical: 6,
               }}
             >
-              <Text style={{ color: "#CBD5E1", fontSize: 12, fontWeight: "600" }}>
+              <Text style={{ color: SCREEN_COLORS.text, fontSize: 12, fontWeight: "600" }}>
                 {benefit}
               </Text>
             </View>
           ))}
         </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 14,
-          }}
-        >
-          <View>
-            <Text style={{ color: "#64748B", fontSize: 12, marginBottom: 3 }}>
-              Price
-            </Text>
-            <Text style={{ color: SCREEN_COLORS.text, fontSize: 24, fontWeight: "800" }}>
-              {formatPrice(product.price)}
-            </Text>
-          </View>
-
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "800" }}>
+            {formatPrice(product.price)}
+          </Text>
           <TouchableOpacity
             activeOpacity={0.85}
+            disabled={product.stock === 0}
             onPress={() => onBuyNow(product)}
             style={{
-              minWidth: 132,
-              height: 48,
-              borderRadius: 16,
+              minWidth: 120,
+              height: 46,
+              borderRadius: 14,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: product.accent,
-              paddingHorizontal: 18,
+              backgroundColor: product.stock === 0 ? "#94A3B8" : accent,
+              paddingHorizontal: 16,
             }}
           >
             <Text style={{ color: "#03111F", fontSize: 15, fontWeight: "800" }}>
@@ -190,17 +158,35 @@ function ProductCard({
 }
 
 export default function StoreScreen() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [cartCount, setCartCount] = useState(0);
+  const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [message, setMessage] = useState("");
 
   const totalPrice = useMemo(() => {
-    if (!selectedProduct) {
-      return 0;
-    }
-
+    if (!selectedProduct) return 0;
     return selectedProduct.price * quantity;
   }, [quantity, selectedProduct]);
+
+  const loadProducts = async () => {
+    setIsLoading(true);
+    setMessage("");
+    try {
+      const data = await listStoreProducts();
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      setMessage(error?.message || "Could not load store products.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadProducts();
+  }, []);
 
   const openProductSheet = (product: Product) => {
     setSelectedProduct(product);
@@ -210,15 +196,80 @@ export default function StoreScreen() {
   const closeProductSheet = () => {
     setSelectedProduct(null);
     setQuantity(1);
+    setAddress(EMPTY_ADDRESS);
+    setIsCheckingOut(false);
   };
 
   const changeQuantity = (delta: number) => {
-    setQuantity((current) => Math.max(1, current + delta));
+    setQuantity((current) => Math.max(1, Math.min(selectedProduct?.stock || 99, current + delta)));
   };
 
-  const addToCart = () => {
-    setCartCount((current) => current + quantity);
-    closeProductSheet();
+  const updateAddress = (key: keyof ShippingAddress, value: string) => {
+    setAddress((current) => ({ ...current, [key]: value }));
+  };
+
+  const checkout = async () => {
+    if (!selectedProduct || isCheckingOut) return;
+
+    if (!address.name.trim() || !address.phone.trim() || !address.line1.trim()) {
+      Alert.alert("Delivery details needed", "Please enter your name, phone, and address.");
+      return;
+    }
+
+    setIsCheckingOut(true);
+    try {
+      const data = await createStoreOrder({
+        items: [{ productId: selectedProduct._id, quantity }],
+        shippingAddress: address,
+      });
+      const { order, payment } = data;
+      const RazorpayCheckout = getRazorpayCheckout();
+
+      if (!payment?.enabled) {
+        Alert.alert(
+          "Order created",
+          "Razorpay keys are not configured yet. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend .env to enable live checkout."
+        );
+        closeProductSheet();
+        await loadProducts();
+        return;
+      }
+
+      if (!RazorpayCheckout) {
+        Alert.alert(
+          "Razorpay order ready",
+          `Order ${order.orderNumber} was created. Install react-native-razorpay in the app to open the native payment sheet.`
+        );
+        closeProductSheet();
+        return;
+      }
+
+      const result = await RazorpayCheckout.open({
+        key: payment.keyId,
+        amount: payment.amount,
+        currency: payment.currency,
+        name: payment.name,
+        description: payment.description,
+        order_id: payment.orderId,
+        prefill: payment.prefill,
+        theme: { color: getSafeAccent(selectedProduct.accent) },
+      });
+
+      await verifyStorePayment({
+        orderId: order._id,
+        razorpay_order_id: result.razorpay_order_id,
+        razorpay_payment_id: result.razorpay_payment_id,
+        razorpay_signature: result.razorpay_signature,
+      });
+
+      Alert.alert("Payment successful", "Your DailyBite order is confirmed.");
+      closeProductSheet();
+      await loadProducts();
+    } catch (error: any) {
+      Alert.alert("Checkout failed", error?.message || "Please try again.");
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   return (
@@ -230,49 +281,23 @@ export default function StoreScreen() {
           contentContainerStyle={{ paddingBottom: 126, paddingHorizontal: 16 }}
         >
           <View style={{ paddingTop: 20, paddingBottom: 24 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 22,
-              }}
-            >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <View style={{ flex: 1, paddingRight: 16 }}>
-                <Text
-                  style={{
-                    color: SCREEN_COLORS.primary,
-                    fontSize: 12,
-                    fontWeight: "700",
-                    letterSpacing: 1,
-                    marginBottom: 8,
-                    textTransform: "uppercase",
-                  }}
-                >
+                <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>
                   Wellness Store
                 </Text>
-                <Text
-                  style={{
-                    color: SCREEN_COLORS.text,
-                    fontSize: 28,
-                    fontWeight: "800",
-                    lineHeight: 34,
-                    marginBottom: 10,
-                  }}
-                >
-                  Shop smart nutrition essentials
-                </Text>
-                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 20 }}>
-                  Browse curated products, open the detail card, adjust quantity,
-                  and add items to your cart without leaving the page.
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 28, fontWeight: "800", lineHeight: 34 }}>
+                  Shop nutrition essentials
                 </Text>
               </View>
 
-              <View
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => loadProducts()}
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 16,
                   backgroundColor: SCREEN_COLORS.iconBg,
                   alignItems: "center",
                   justifyContent: "center",
@@ -280,115 +305,85 @@ export default function StoreScreen() {
                   borderColor: SCREEN_COLORS.border,
                 }}
               >
-                <Ionicons name="storefront" size={28} color={SCREEN_COLORS.primary} />
-              </View>
+                <Ionicons name="refresh" size={24} color={SCREEN_COLORS.primary} />
+              </TouchableOpacity>
             </View>
 
             <View
               style={{
                 backgroundColor: SCREEN_COLORS.card,
-                borderRadius: 22,
+                borderRadius: 18,
                 borderWidth: 1,
                 borderColor: SCREEN_COLORS.border,
-                padding: 18,
+                padding: 16,
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "space-between",
+                gap: 12,
               }}
             >
-              <View>
-                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, marginBottom: 4 }}>
-                  Cart
-                </Text>
-                <Text style={{ color: SCREEN_COLORS.text, fontSize: 20, fontWeight: "800" }}>
-                  {cartCount} items
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  backgroundColor: "rgba(56,189,248,0.12)",
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                }}
-              >
-                <Ionicons name="cart" size={18} color={SCREEN_COLORS.primary} />
-                <Text style={{ color: SCREEN_COLORS.primary, fontWeight: "700" }}>
-                  Ready to checkout
-                </Text>
-              </View>
+              <Ionicons name="shield-checkmark" size={22} color={SCREEN_COLORS.primary} />
+              <Text style={{ color: SCREEN_COLORS.textMuted, flex: 1, lineHeight: 20 }}>
+                Secure checkout, live inventory, and tracked delivery for every order.
+              </Text>
             </View>
           </View>
 
-          {PRODUCTS.map((product) => (
-            <ProductCard key={product.id} product={product} onBuyNow={openProductSheet} />
-          ))}
+          {isLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+              <ActivityIndicator color={SCREEN_COLORS.primary} />
+              <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 12 }}>Loading products</Text>
+            </View>
+          ) : message ? (
+            <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 16 }}>
+              <Text style={{ color: SCREEN_COLORS.text }}>{message}</Text>
+            </View>
+          ) : products.length === 0 ? (
+            <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 16 }}>
+              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800", marginBottom: 6 }}>
+                No products yet
+              </Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted }}>
+                Add products from the admin panel and they will appear here.
+              </Text>
+            </View>
+          ) : (
+            products.map((product) => (
+              <ProductCard key={product._id} product={product} onBuyNow={openProductSheet} />
+            ))
+          )}
         </ScrollView>
 
         <AppBottomNav />
       </ScreenBackground>
 
-      <Modal
-        visible={!!selectedProduct}
-        animationType="slide"
-        transparent
-        onRequestClose={closeProductSheet}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            backgroundColor: "rgba(7, 45, 102, 0.24)",
-          }}
-        >
+      <Modal visible={!!selectedProduct} animationType="slide" transparent onRequestClose={closeProductSheet}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(7, 45, 102, 0.24)" }}>
           <Pressable style={{ flex: 1 }} onPress={closeProductSheet} />
 
           {selectedProduct ? (
             <SafeAreaView
               style={{
                 backgroundColor: SCREEN_COLORS.background,
-                borderTopLeftRadius: 28,
-                borderTopRightRadius: 28,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
                 overflow: "hidden",
               }}
               edges={["bottom"]}
             >
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 24 }}
-              >
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
                 <Image
-                  source={{ uri: selectedProduct.image }}
-                  style={{ width: "100%", height: 220 }}
+                  source={{ uri: selectedProduct.image || FALLBACK_IMAGE }}
+                  style={{ width: "100%", height: 190 }}
                   resizeMode="cover"
                 />
 
-                <View style={{ padding: 20 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: 16,
-                      marginBottom: 12,
-                    }}
-                  >
+                <View style={{ padding: 18 }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: SCREEN_COLORS.text,
-                          fontSize: 24,
-                          fontWeight: "800",
-                          marginBottom: 6,
-                        }}
-                      >
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 23, fontWeight: "800", marginBottom: 6 }}>
                         {selectedProduct.name}
                       </Text>
-                      <Text style={{ color: selectedProduct.accent, fontSize: 18, fontWeight: "800" }}>
+                      <Text style={{ color: getSafeAccent(selectedProduct.accent), fontSize: 18, fontWeight: "800" }}>
                         {formatPrice(selectedProduct.price)}
                       </Text>
                     </View>
@@ -409,141 +404,79 @@ export default function StoreScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  <Text
-                    style={{
-                      color: SCREEN_COLORS.textMuted,
-                      fontSize: 15,
-                      lineHeight: 22,
-                      marginBottom: 18,
-                    }}
-                  >
-                    {selectedProduct.fullDescription}
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 15, lineHeight: 22, marginTop: 14, marginBottom: 16 }}>
+                    {selectedProduct.fullDescription || selectedProduct.shortDescription}
                   </Text>
 
-                  <View style={{ gap: 10, marginBottom: 20 }}>
-                    {selectedProduct.benefits.map((benefit) => (
-                      <View
-                        key={benefit}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 10,
-                          backgroundColor: SCREEN_COLORS.card,
-                          borderRadius: 16,
-                          paddingHorizontal: 14,
-                          paddingVertical: 12,
-                          borderWidth: 1,
-                          borderColor: SCREEN_COLORS.border,
-                        }}
-                      >
-                        <Ionicons name="checkmark-circle" size={18} color={selectedProduct.accent} />
-                        <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, fontWeight: "600" }}>
-                          {benefit}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View
-                    style={{
-                      backgroundColor: SCREEN_COLORS.card,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: SCREEN_COLORS.border,
-                      padding: 18,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: SCREEN_COLORS.textMuted,
-                        fontSize: 13,
-                        marginBottom: 12,
-                      }}
-                    >
-                      Choose quantity
+                  <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 18, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 16 }}>
+                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "800", marginBottom: 12 }}>
+                      Quantity
                     </Text>
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 18,
-                      }}
-                    >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          backgroundColor: SCREEN_COLORS.cardSoft,
-                          borderRadius: 18,
-                          padding: 6,
-                          gap: 6,
-                        }}
-                      >
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          onPress={() => changeQuantity(-1)}
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 14,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: SCREEN_COLORS.card,
-                          }}
-                        >
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <TouchableOpacity onPress={() => changeQuantity(-1)} style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: SCREEN_COLORS.cardSoft }}>
                           <Ionicons name="remove" size={18} color={SCREEN_COLORS.primaryDark} />
                         </TouchableOpacity>
-
-                        <View style={{ minWidth: 42, alignItems: "center" }}>
-                          <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "800" }}>
-                            {quantity}
-                          </Text>
-                        </View>
-
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          onPress={() => changeQuantity(1)}
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 14,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: selectedProduct.accent,
-                          }}
-                        >
+                        <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "800", minWidth: 34, textAlign: "center" }}>
+                          {quantity}
+                        </Text>
+                        <TouchableOpacity onPress={() => changeQuantity(1)} style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: getSafeAccent(selectedProduct.accent) }}>
                           <Ionicons name="add" size={18} color="#03111F" />
                         </TouchableOpacity>
                       </View>
-
-                      <View style={{ alignItems: "flex-end" }}>
-                        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 3 }}>
-                          Total
-                        </Text>
-                        <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "800" }}>
-                          {formatPrice(totalPrice)}
-                        </Text>
-                      </View>
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "800" }}>
+                        {formatPrice(totalPrice)}
+                      </Text>
                     </View>
+
+                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "800", marginBottom: 10 }}>
+                      Delivery
+                    </Text>
+                    {[
+                      ["name", "Full name"],
+                      ["phone", "Phone"],
+                      ["line1", "Address"],
+                      ["city", "City"],
+                      ["state", "State"],
+                      ["postalCode", "PIN code"],
+                    ].map(([key, placeholder]) => (
+                      <TextInput
+                        key={key}
+                        value={address[key as keyof ShippingAddress]}
+                        onChangeText={(value) => updateAddress(key as keyof ShippingAddress, value)}
+                        placeholder={placeholder}
+                        placeholderTextColor="#94A3B8"
+                        style={{
+                          minHeight: 44,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: SCREEN_COLORS.border,
+                          color: SCREEN_COLORS.text,
+                          paddingHorizontal: 12,
+                          marginBottom: 10,
+                          backgroundColor: SCREEN_COLORS.background,
+                        }}
+                      />
+                    ))}
 
                     <TouchableOpacity
                       activeOpacity={0.85}
-                      onPress={addToCart}
+                      disabled={isCheckingOut}
+                      onPress={checkout}
                       style={{
                         height: 54,
-                        borderRadius: 18,
-                        backgroundColor: selectedProduct.accent,
+                        borderRadius: 16,
+                        backgroundColor: getSafeAccent(selectedProduct.accent),
                         alignItems: "center",
                         justifyContent: "center",
                         flexDirection: "row",
                         gap: 8,
+                        opacity: isCheckingOut ? 0.7 : 1,
                       }}
                     >
-                      <Ionicons name="cart" size={18} color="#03111F" />
+                      {isCheckingOut ? <ActivityIndicator color="#03111F" /> : <Ionicons name="card" size={18} color="#03111F" />}
                       <Text style={{ color: "#03111F", fontSize: 16, fontWeight: "800" }}>
-                        Add to Cart
+                        Pay with Razorpay
                       </Text>
                     </TouchableOpacity>
                   </View>

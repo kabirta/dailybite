@@ -9,6 +9,7 @@ import {
 } from "firebase/auth";
 
 import { auth, googleAuthConfig } from "../config/firebase";
+import { clearBackendSession } from "./backendApi";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -186,5 +187,6 @@ export async function signOutUser() {
     }
   }
 
+  await clearBackendSession();
   await signOut(auth);
 }

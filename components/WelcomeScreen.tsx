@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import { signInWithGoogle } from '../src/services/authService';
+import { loginWithFirebaseUser } from '../src/services/backendApi';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
 import SignInSheet from './SignInSheet';
 
@@ -147,6 +148,8 @@ export default function WelcomeScreen() {
       if (!result) {
         return;
       }
+
+      await loginWithFirebaseUser(result.user);
 
       closeSignInSheet(() => router.replace("/diary"));
     } catch (error) {

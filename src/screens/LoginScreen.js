@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { signInWithGoogle } from "../services/authService";
+import { loginWithFirebaseUser } from "../services/backendApi";
 
 function getErrorMessage(error) {
   if (error?.code === "auth/account-exists-with-different-credential") {
@@ -37,6 +38,8 @@ export default function LoginScreen({ loading }) {
       if (!result) {
         return;
       }
+
+      await loginWithFirebaseUser(result.user);
     } catch (error) {
       Alert.alert("Google Sign-In Failed", getErrorMessage(error));
     } finally {
