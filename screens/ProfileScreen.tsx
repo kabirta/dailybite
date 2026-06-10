@@ -30,7 +30,7 @@ import {
 import { auth as rawAuth } from "../src/config/firebase";
 import { signOutUser } from "../src/services/authService";
 
-const AVATAR_STORAGE_KEY = "@healthbangla_avatar_uri";
+const AVATAR_STORAGE_KEY = "@nutrimed_ai_by_cmc_avatar_uri";
 const CARD = SCREEN_COLORS.card;
 const CARD_ALT = SCREEN_COLORS.card;
 const BG = SCREEN_COLORS.background;
@@ -767,7 +767,7 @@ export default function ProfileScreen() {
             )}
           </Pressable>
 
-          <Text style={styles.versionText}>HealthBangla v1.0.0</Text>
+          <Text style={styles.versionText}>NutriMed AI by CMC v1.0.0</Text>
         </ScrollView>
       </ScreenBackground>
     </SafeAreaView>

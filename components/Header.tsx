@@ -35,6 +35,15 @@ export function Header({
     router.push("/calendar");
   };
 
+  const handleSearchPress = () => {
+    if (onSearchPress) {
+      onSearchPress();
+      return;
+    }
+
+    router.push("/search");
+  };
+
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
       {/* Avatar */}
@@ -84,7 +93,7 @@ export function Header({
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onSearchPress} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleSearchPress} activeOpacity={0.7}>
           <Ionicons name="search-outline" size={26} color={SCREEN_COLORS.primaryDark} />
         </TouchableOpacity>
 

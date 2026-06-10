@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "healthbangla",
-    "slug": "healthbangla",
+    "name": "NutriMed AI by CMC",
+    "slug": "nutrimed-ai-by-cmc",
     "scheme": "com.nutrimed.ai",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "googleServicesFile": "./google-services.json",
@@ -35,8 +35,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow HealthBangla to access your photos to set a profile picture.",
-          "cameraPermission": "Allow HealthBangla to use your camera to take a profile photo."
+          "photosPermission": "Allow NutriMed AI by CMC to access your photos to set a profile picture.",
+          "cameraPermission": "Allow NutriMed AI by CMC to use your camera to take a profile photo."
         }
       ],
       "expo-web-browser",

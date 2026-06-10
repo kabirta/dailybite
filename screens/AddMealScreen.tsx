@@ -141,6 +141,7 @@ function CookBookTab() {
 
 function RecipesTab() {
   const [query, setQuery] = useState("");
+  const inputRef = useRef<TextInput>(null);
   const [recipes, setRecipes] = useState<CatalogRecipe[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -195,8 +196,11 @@ function RecipesTab() {
             gap: 8,
           }}
         >
-          <Ionicons name="search-outline" size={18} color={SCREEN_COLORS.textMuted} />
+          <TouchableOpacity onPress={() => inputRef.current?.focus()}>
+            <Ionicons name="search-outline" size={18} color={SCREEN_COLORS.textMuted} />
+          </TouchableOpacity>
           <TextInput
+            ref={inputRef}
             value={query}
             onChangeText={setQuery}
             placeholder="Search recipes..."
@@ -310,9 +314,14 @@ function RecipesTab() {
 
 // ── Food Tab ──────────────────────────────────────────────────────────────────
 
-function FoodTab() {
+function FoodTab({
+  autoFocus = false,
+}: {
+  autoFocus?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const [foods, setFoods] = useState<CatalogFood[]>([]);
   const [selectedFoodIds, setSelectedFoodIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -354,6 +363,18 @@ function FoodTab() {
     );
   };
 
+  useEffect(() => {
+    if (!autoFocus) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [autoFocus]);
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -374,12 +395,15 @@ function FoodTab() {
           marginBottom: 24,
         }}
       >
-        <Ionicons
-          name="search-outline"
-          size={18}
-          color={focused ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted}
-        />
+        <TouchableOpacity onPress={() => inputRef.current?.focus()}>
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={focused ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted}
+          />
+        </TouchableOpacity>
         <TextInput
+          ref={inputRef}
           value={query}
           onChangeText={setQuery}
           onFocus={() => setFocused(true)}
@@ -588,8 +612,9 @@ function SavedMealsTab() {
 
 export default function AddMealScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ meal?: string }>();
+  const params = useLocalSearchParams<{ meal?: string; focusSearch?: string }>();
   const mealLabel = params.meal ?? "Breakfast";
+  const shouldFocusSearch = params.focusSearch === "1";
 
   const [activeTab, setActiveTab] = useState(2); // default: FOOD
   const pagerRef = useRef<ScrollView>(null);
@@ -607,6 +632,19 @@ export default function AddMealScreen() {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     if (index !== activeTab) setActiveTab(index);
   };
+
+  useEffect(() => {
+    if (!shouldFocusSearch) {
+      return;
+    }
+
+    setActiveTab(2);
+    const timer = setTimeout(() => {
+      pagerRef.current?.scrollTo({ x: 2 * SCREEN_WIDTH, animated: false });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [shouldFocusSearch]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }} edges={["top"]}>
@@ -714,7 +752,7 @@ export default function AddMealScreen() {
           <RecipesTab />
         </View>
         <View style={{ width: SCREEN_WIDTH }}>
-          <FoodTab />
+          <FoodTab autoFocus={shouldFocusSearch && activeTab === 2} />
         </View>
         <View style={{ width: SCREEN_WIDTH }}>
           <RecentlyEatenTab meal={mealLabel} />

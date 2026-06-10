@@ -157,7 +157,7 @@ export default function PremiumScreen() {
               <Text
                 style={{ color: "#EAB308", fontSize: 12, fontWeight: "700", letterSpacing: 0.5 }}
               >
-                HEALTHBANGLA PREMIUM
+                NUTRIMED AI BY CMC PREMIUM
               </Text>
             </View>
 

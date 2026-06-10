@@ -572,7 +572,7 @@ export default function OnboardingScreen() {
           <StepCard
             eyebrow="WELCOME"
             title={`Nice to meet you, ${currentName}`}
-            subtitle="We'll ask a few quick questions to personalize NutriMed for you."
+            subtitle="We'll ask a few quick questions to personalize NutriMed AI by CMC for you."
             centered
             badge={<HeroBadge label="HI" tint="#65B6FF" />}
           >
