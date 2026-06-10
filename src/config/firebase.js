@@ -6,28 +6,21 @@ import {
   initializeAuth,
 } from "firebase/auth";
 
-const googleServices = require("../../google-services.json");
-
-const projectInfo = googleServices.project_info ?? {};
-const clientConfig = googleServices.client?.[0] ?? {};
-const oauthClients = clientConfig.oauth_client ?? [];
-
 const firebaseConfig = {
-  apiKey: clientConfig.api_key?.[0]?.current_key ?? "",
-  authDomain: `${projectInfo.project_id}.firebaseapp.com`,
-  projectId: projectInfo.project_id ?? "",
-  storageBucket: projectInfo.storage_bucket ?? "",
-  messagingSenderId: projectInfo.project_number ?? "",
-  appId: clientConfig.client_info?.mobilesdk_app_id ?? "",
+  apiKey: "AIzaSyCU8LYQDcc-gmeLkSPerpf_8Q3q2Ffvut4",
+  authDomain: "nutrimed-ai.firebaseapp.com",
+  projectId: "nutrimed-ai",
+  storageBucket: "nutrimed-ai.firebasestorage.app",
+  messagingSenderId: "106585820976",
+  appId: "1:106585820976:android:4b5df91c3b597fe190c2f5",
 };
 
 const googleAuthConfig = {
   androidClientId:
-    oauthClients.find((client) => client.client_type === 1)?.client_id ?? "",
+    "106585820976-dj2lq434gcu31ep98pbjikgm6snpn7v7.apps.googleusercontent.com",
   webClientId:
-    oauthClients.find((client) => client.client_type === 3)?.client_id ?? "",
-  androidPackageName:
-    clientConfig.client_info?.android_client_info?.package_name ?? "",
+    "106585820976-ea3n8s7ojl5ntpn76dn9r50tkf2ldflr.apps.googleusercontent.com",
+  androidPackageName: "com.nutrimed.ai",
 };
 
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {

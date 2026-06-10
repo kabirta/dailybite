@@ -46,6 +46,15 @@ function getNativeGoogleSigninModule() {
   return require("@react-native-google-signin/google-signin");
 }
 
+function isMissingNativeGoogleSigninModule(error) {
+  return (
+    error?.message?.includes("RNGoogleSignin") ||
+    error?.message?.includes("TurboModuleRegistry") ||
+    error?.message?.includes("@react-native-google-signin/google-signin") ||
+    error?.message?.includes("Cannot find native module")
+  );
+}
+
 function configureNativeGoogleSignin() {
   const { GoogleSignin } = getNativeGoogleSigninModule();
 
@@ -171,7 +180,16 @@ export async function signInWithGoogle() {
   }
 
   if (Platform.OS !== "web") {
-    return signInWithNativeGoogle();
+    try {
+      return await signInWithNativeGoogle();
+    } catch (error) {
+      if (!isMissingNativeGoogleSigninModule(error)) {
+        throw error;
+      }
+
+      console.warn("Native Google Sign-In is unavailable; using web sign-in fallback.");
+      return signInWithWebGoogle();
+    }
   }
 
   return signInWithWebGoogle();

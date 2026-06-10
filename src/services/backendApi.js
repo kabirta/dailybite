@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../config/firebase";
 
 const ACCESS_TOKEN_KEY = "dailybite.accessToken";
@@ -28,7 +29,14 @@ function getApiBaseUrl() {
       ? configured
       : `https://${configured}`;
     const normalized = withProtocol.replace(/\/$/, "");
-    const apiUrl = normalized.endsWith("/api/v1") ? normalized : `${normalized}/api/v1`;
+    const secureNormalized =
+      normalized.startsWith("http://") &&
+      !normalized.includes("://127.0.0.1") &&
+      !normalized.includes("://localhost") &&
+      !normalized.includes("://10.0.2.2")
+        ? normalized.replace("http://", "https://")
+        : normalized;
+    const apiUrl = secureNormalized.endsWith("/api/v1") ? secureNormalized : `${secureNormalized}/api/v1`;
 
     if (
       Platform.OS === "android" &&
@@ -46,6 +54,7 @@ function getApiBaseUrl() {
 }
 
 const API_BASE_URL = getApiBaseUrl();
+const FIREBASE_USER_WAIT_MS = 3000;
 
 export function getConfiguredApiBaseUrl() {
   return API_BASE_URL;
@@ -129,22 +138,53 @@ export async function clearBackendSession() {
   await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY]);
 }
 
+function waitForFirebaseUser(timeoutMs = FIREBASE_USER_WAIT_MS) {
+  if (auth.currentUser) {
+    return Promise.resolve(auth.currentUser);
+  }
+
+  return new Promise((resolve) => {
+    let didResolve = false;
+    let unsubscribe = () => undefined;
+
+    const finish = (user) => {
+      if (didResolve) return;
+      didResolve = true;
+      clearTimeout(timeout);
+      unsubscribe();
+      resolve(user);
+    };
+
+    const timeout = setTimeout(() => finish(auth.currentUser), timeoutMs);
+    unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => finish(user),
+      () => finish(auth.currentUser)
+    );
+  });
+}
+
 async function getBackendAccessToken() {
   const storedToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
   if (storedToken) {
     return storedToken;
   }
 
-  if (!auth.currentUser) {
+  const firebaseUser = await waitForFirebaseUser();
+  if (!firebaseUser) {
     return null;
   }
 
-  const session = await loginWithFirebaseUser(auth.currentUser);
+  const session = await loginWithFirebaseUser(firebaseUser);
   return session?.accessToken ?? null;
 }
 
 export async function ensureBackendSession() {
   return getBackendAccessToken();
+}
+
+export async function refreshBackendSession() {
+  return getFreshBackendAccessToken();
 }
 
 async function getFreshBackendAccessToken() {
@@ -411,6 +451,28 @@ export async function listReminders() {
   return authenticatedRequest("/reminders");
 }
 
+export async function getMyProfile() {
+  return authenticatedRequest("/users/me");
+}
+
+export async function getPremiumStatus() {
+  return authenticatedRequest("/premium/status");
+}
+
+export async function createPremiumOrder(plan = "monthly") {
+  return authenticatedRequest("/premium/orders", {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+export async function verifyPremiumPayment(payload) {
+  return authenticatedRequest("/premium/payments/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function createReminder(payload) {
   return authenticatedRequest("/reminders", {
     method: "POST",
@@ -430,6 +492,85 @@ export async function toggleReminder(reminderId, isActive) {
     method: "PATCH",
     body: JSON.stringify({ isActive }),
   });
+}
+
+export async function deleteReminder(reminderId) {
+  return authenticatedRequest(`/reminders/${reminderId}`, { method: "DELETE" });
+}
+
+export async function listCustomMeals({ query = "", page = 1, limit = 30 } = {}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (query.trim()) params.set("q", query.trim());
+
+  return authenticatedRequest(`/custom-meals?${params.toString()}`);
+}
+
+export async function createCustomMeal(payload) {
+  return authenticatedRequest("/custom-meals", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateCustomMeal(mealId, payload) {
+  return authenticatedRequest(`/custom-meals/${mealId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteCustomMeal(mealId) {
+  return authenticatedRequest(`/custom-meals/${mealId}`, { method: "DELETE" });
+}
+
+export async function logCustomMeal(mealId, payload) {
+  return authenticatedRequest(`/custom-meals/${mealId}/log`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAIChats({ page = 1, limit = 20 } = {}) {
+  return authenticatedRequest(`/ai/chats?page=${page}&limit=${limit}`);
+}
+
+export async function listAIChatMessages(chatId, { page = 1, limit = 30 } = {}) {
+  return authenticatedRequest(`/ai/chats/${chatId}/messages?page=${page}&limit=${limit}`);
+}
+
+export async function sendAIChatMessage({ chatId, message, category = "general" }) {
+  const path = chatId ? `/ai/chats/${chatId}/messages` : "/ai/chats";
+  return authenticatedRequest(path, {
+    method: "POST",
+    body: JSON.stringify({ message, category }),
+  });
+}
+
+export async function regenerateAIChatMessage({ chatId, messageId }) {
+  return authenticatedRequest(`/ai/chats/${chatId}/messages/${messageId}/regenerate`, {
+    method: "POST",
+  });
+}
+
+export async function analyzeSymptoms(payload) {
+  return authenticatedRequest("/ai/symptoms/analyze", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createStressCheckIn(payload) {
+  return authenticatedRequest("/ai/stress/check-ins", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listAIInsights() {
+  return authenticatedRequest("/ai/insights");
 }
 
 export async function listRecipes(query = "") {

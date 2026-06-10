@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -14,7 +15,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
-import { getConfiguredApiBaseUrl, listRecipes, searchFoods } from "../src/services/backendApi";
+import {
+  createCustomMeal,
+  deleteCustomMeal,
+  getConfiguredApiBaseUrl,
+  listCustomMeals,
+  listRecipes,
+  logCustomMeal,
+  searchFoods,
+} from "../src/services/backendApi";
+import { useNutrition } from "../src/context/NutritionContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -26,6 +36,9 @@ const TABS = [
   "MOST EATEN",
   "SAVED MEALS",
 ] as const;
+
+const FOOD_TAB_INDEX = 2;
+const SAVED_MEALS_TAB_INDEX = 5;
 
 type CatalogFood = {
   _id: string;
@@ -46,6 +59,61 @@ type CatalogRecipe = {
   cookTime: number;
   imageUrl?: string;
 };
+
+type CustomMeal = {
+  _id: string;
+  name: string;
+  description?: string;
+  defaultMealType?: string;
+  items?: {
+    foodId?: CatalogFood;
+    quantity: number;
+    nameSnapshot?: string;
+  }[];
+  totals?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
+};
+
+type MealType = "breakfast" | "lunch" | "dinner" | "snacks" | "other";
+
+const MEAL_LABEL_TO_TYPE: Record<string, MealType> = {
+  breakfast: "breakfast",
+  lunch: "lunch",
+  dinner: "dinner",
+  snacks: "snacks",
+  "snacks/other": "snacks",
+  snack: "snacks",
+  other: "other",
+};
+
+function normalizeMealTypeLabel(value?: string | string[]): MealType {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const key = String(raw || "Breakfast").trim().toLowerCase();
+  return MEAL_LABEL_TO_TYPE[key] ?? "breakfast";
+}
+
+function parseIsoDateParam(value?: string | string[]) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return new Date();
+
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date();
+
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
+
+function formatIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function formatHeaderDate(date: Date): string {
   const days = [
@@ -316,14 +384,17 @@ function RecipesTab() {
 
 function FoodTab({
   autoFocus = false,
+  selectedFoodIds,
+  onToggleFood,
 }: {
   autoFocus?: boolean;
+  selectedFoodIds: string[];
+  onToggleFood: (foodId: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const [foods, setFoods] = useState<CatalogFood[]>([]);
-  const [selectedFoodIds, setSelectedFoodIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -356,12 +427,6 @@ function FoodTab({
       clearTimeout(timer);
     };
   }, [query]);
-
-  const toggleFood = (foodId: string) => {
-    setSelectedFoodIds((current) =>
-      current.includes(foodId) ? current.filter((id) => id !== foodId) : [...current, foodId],
-    );
-  };
 
   useEffect(() => {
     if (!autoFocus) {
@@ -442,7 +507,7 @@ function FoodTab({
               <TouchableOpacity
                 key={food._id}
                 activeOpacity={0.82}
-                onPress={() => toggleFood(food._id)}
+                onPress={() => onToggleFood(food._id)}
                 style={{
                   backgroundColor: SCREEN_COLORS.card,
                   borderRadius: 12,
@@ -572,38 +637,363 @@ function MostEatenTab() {
 
 // ── Saved Meals Tab ───────────────────────────────────────────────────────────
 
-function SavedMealsTab() {
+function SavedMealsTab({
+  selectedFoodIds,
+  mealType,
+  selectedDate,
+  selectedDateIso,
+  onLogged,
+}: {
+  selectedFoodIds: string[];
+  mealType: MealType;
+  selectedDate: Date;
+  selectedDateIso: string;
+  onLogged: () => void;
+}) {
+  const router = useRouter();
+  const [meals, setMeals] = useState<CustomMeal[]>([]);
+  const [query, setQuery] = useState("");
+  const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingId, setIsLoggingId] = useState<string | null>(null);
+  const [premiumLocked, setPremiumLocked] = useState(false);
+
+  const openPremium = () => router.push("/premium-plan");
+
+  const handlePremiumError = (error: unknown) => {
+    if (typeof error === "object" && error && "status" in error && (error as any).status === 402) {
+      setPremiumLocked(true);
+      return true;
+    }
+    return false;
+  };
+
+  const loadMeals = async () => {
+    try {
+      setIsLoading(true);
+      const data = await listCustomMeals({ query });
+      setMeals(Array.isArray(data) ? data : []);
+      setPremiumLocked(false);
+    } catch (error) {
+      if (!handlePremiumError(error)) {
+        console.warn("[CustomMeals] Failed to load", error);
+        setMeals([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadMeals();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const saveSelectedAsMeal = async () => {
+    const uniqueFoodIds = [...new Set(selectedFoodIds)];
+    if (!name.trim()) {
+      Alert.alert("Name your meal", "Add a short name like Protein breakfast or Office lunch.");
+      return;
+    }
+    if (!uniqueFoodIds.length) {
+      Alert.alert("Select foods first", "Go to the Food tab, select the foods, then save them as a custom meal.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await createCustomMeal({
+        name: name.trim(),
+        defaultMealType: mealType,
+        items: uniqueFoodIds.map((foodId) => ({ foodId, quantity: 1 })),
+      });
+      setName("");
+      onLogged();
+      await loadMeals();
+    } catch (error) {
+      if (handlePremiumError(error)) return;
+      Alert.alert("Could not save custom meal", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const logMeal = async (mealId: string) => {
+    if (isLoggingId) return;
+    setIsLoggingId(mealId);
+    try {
+      await logCustomMeal(mealId, {
+        mealType,
+        date: selectedDate,
+        scale: 1,
+      });
+      router.replace(`/diary?date=${selectedDateIso}`);
+    } catch (error) {
+      if (handlePremiumError(error)) return;
+      Alert.alert("Could not log custom meal", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setIsLoggingId(null);
+    }
+  };
+
+  const removeMeal = (meal: CustomMeal) => {
+    Alert.alert("Delete custom meal?", meal.name, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteCustomMeal(meal._id);
+            setMeals((current) => current.filter((item) => item._id !== meal._id));
+          } catch (error) {
+            if (handlePremiumError(error)) return;
+            Alert.alert("Could not delete meal", error instanceof Error ? error.message : "Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
+  if (premiumLocked) {
+    return (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+      >
+        <View
+          style={{
+            backgroundColor: SCREEN_COLORS.card,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: SCREEN_COLORS.border,
+            padding: 18,
+            gap: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 18,
+              backgroundColor: SCREEN_COLORS.iconBg,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="sparkles-outline" size={26} color={SCREEN_COLORS.primary} />
+          </View>
+          <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "800" }}>
+            Custom Meals are Premium
+          </Text>
+          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 21 }}>
+            Save full meal combinations and log them in one tap after activating your plan.
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={openPremium}
+            style={{
+              height: 48,
+              borderRadius: 14,
+              backgroundColor: SCREEN_COLORS.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: 4,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "800" }}>
+              View Premium Plan
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
       contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
     >
-      <TouchableOpacity
-        activeOpacity={0.8}
+      <View
         style={{
-          borderWidth: 1.5,
-          borderColor: SCREEN_COLORS.primary,
-          borderRadius: 12,
-          paddingVertical: 14,
-          alignItems: "center",
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: 8,
-          marginBottom: 32,
+          backgroundColor: SCREEN_COLORS.card,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: SCREEN_COLORS.border,
+          padding: 14,
+          marginBottom: 14,
+          gap: 10,
         }}
       >
-        <Ionicons name="add" size={20} color={SCREEN_COLORS.primary} />
-        <Text style={{ color: SCREEN_COLORS.primary, fontSize: 15, fontWeight: "700" }}>
-          New Saved Meal
+        <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "800" }}>
+          Save selected foods
         </Text>
-      </TouchableOpacity>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, lineHeight: 19 }}>
+          {selectedFoodIds.length
+            ? `${selectedFoodIds.length} selected food${selectedFoodIds.length === 1 ? "" : "s"} will become a reusable meal.`
+            : "Select foods in the Food tab first, then save the combo here."}
+        </Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="Meal name"
+          placeholderTextColor={SCREEN_COLORS.textMuted}
+          style={{
+            minHeight: 46,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: SCREEN_COLORS.border,
+            paddingHorizontal: 12,
+            color: SCREEN_COLORS.text,
+            backgroundColor: SCREEN_COLORS.cardSoft,
+          }}
+        />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          disabled={isSaving || !selectedFoodIds.length}
+          onPress={() => void saveSelectedAsMeal()}
+          style={{
+            height: 46,
+            borderRadius: 12,
+            backgroundColor: SCREEN_COLORS.primary,
+            opacity: isSaving || !selectedFoodIds.length ? 0.55 : 1,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            gap: 8,
+          }}
+        >
+          {isSaving ? <ActivityIndicator color="#fff" /> : <Ionicons name="bookmark" size={18} color="#fff" />}
+          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "800" }}>
+            Save Custom Meal
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-      <EmptyState
-        icon="bookmark-outline"
-        title="No Saved Meals"
-        subtitle="Save meal combinations to log them quickly next time."
-      />
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: SCREEN_COLORS.card,
+          borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          borderWidth: 1,
+          borderColor: SCREEN_COLORS.border,
+          gap: 8,
+          marginBottom: 14,
+        }}
+      >
+        <Ionicons name="search-outline" size={18} color={SCREEN_COLORS.textMuted} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search saved meals..."
+          placeholderTextColor={SCREEN_COLORS.textMuted}
+          style={{ flex: 1, color: SCREEN_COLORS.text, fontSize: 14 }}
+        />
+      </View>
+
+      {isLoading ? (
+        <View style={{ paddingTop: 36 }}>
+          <ActivityIndicator color={SCREEN_COLORS.primary} />
+        </View>
+      ) : meals.length === 0 ? (
+        <EmptyState
+          icon="bookmark-outline"
+          title="No Saved Meals"
+          subtitle="Save meal combinations to log them quickly next time."
+        />
+      ) : (
+        <View style={{ gap: 12 }}>
+          {meals.map((meal) => {
+            const totals = meal.totals ?? {};
+            const itemCount = meal.items?.length ?? 0;
+            return (
+              <View
+                key={meal._id}
+                style={{
+                  backgroundColor: SCREEN_COLORS.card,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: SCREEN_COLORS.border,
+                  padding: 14,
+                  gap: 12,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "800" }}>
+                      {meal.name}
+                    </Text>
+                    <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
+                      {itemCount} food{itemCount === 1 ? "" : "s"} • {Math.round(totals.calories ?? 0)} kcal
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeMeal(meal)} hitSlop={10}>
+                    <Ionicons name="trash-outline" size={20} color="#E5484D" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  {[
+                    ["Protein", totals.protein],
+                    ["Carbs", totals.carbs],
+                    ["Fat", totals.fat],
+                  ].map(([label, value]) => (
+                    <View
+                      key={String(label)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 999,
+                        backgroundColor: SCREEN_COLORS.cardSoft,
+                        borderWidth: 1,
+                        borderColor: SCREEN_COLORS.border,
+                      }}
+                    >
+                      <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, fontWeight: "700" }}>
+                        {label}: {Math.round(Number(value ?? 0))}g
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={isLoggingId === meal._id}
+                  onPress={() => void logMeal(meal._id)}
+                  style={{
+                    height: 44,
+                    borderRadius: 12,
+                    backgroundColor: SCREEN_COLORS.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                    opacity: isLoggingId === meal._id ? 0.65 : 1,
+                  }}
+                >
+                  {isLoggingId === meal._id ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  )}
+                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "800" }}>
+                    Add to {String(mealType)}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -612,14 +1002,20 @@ function SavedMealsTab() {
 
 export default function AddMealScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ meal?: string; focusSearch?: string }>();
+  const params = useLocalSearchParams<{ meal?: string; date?: string; focusSearch?: string; tab?: string }>();
+  const { logFoods } = useNutrition();
   const mealLabel = params.meal ?? "Breakfast";
+  const mealType = normalizeMealTypeLabel(params.meal);
   const shouldFocusSearch = params.focusSearch === "1";
+  const initialTab = params.tab === "saved-meals" ? SAVED_MEALS_TAB_INDEX : FOOD_TAB_INDEX;
 
-  const [activeTab, setActiveTab] = useState(2); // default: FOOD
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [selectedFoodIds, setSelectedFoodIds] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const pagerRef = useRef<ScrollView>(null);
 
-  const today = new Date();
+  const selectedDate = parseIsoDateParam(params.date);
+  const selectedDateIso = formatIsoDate(selectedDate);
 
   const handleTabPress = (index: number) => {
     setActiveTab(index);
@@ -633,18 +1029,75 @@ export default function AddMealScreen() {
     if (index !== activeTab) setActiveTab(index);
   };
 
+  const toggleFood = (foodId: string) => {
+    setSelectedFoodIds((current) =>
+      current.includes(foodId) ? current.filter((id) => id !== foodId) : [...current, foodId],
+    );
+  };
+
+  const saveSelectedFoods = async () => {
+    const foodIds = [...new Set(selectedFoodIds)];
+    if (!foodIds.length || isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      console.info("[AddMeal] Saving selected foods", {
+        mealType,
+        date: selectedDateIso,
+        count: foodIds.length,
+      });
+
+      // The previous implementation only selected foods locally in FoodTab.
+      // Persist each selected item through the shared nutrition context so the
+      // backend save and diary refetch stay in sync for every meal type.
+      const entries = await logFoods(
+        foodIds.map((foodId) => ({ foodId, mealType, quantity: 1, date: selectedDate })),
+        selectedDate
+      );
+
+      console.info("[AddMeal] Saved selected foods", {
+        mealType,
+        date: selectedDateIso,
+        savedCount: entries.length,
+      });
+
+      setSelectedFoodIds([]);
+      router.replace(`/diary?date=${selectedDateIso}`);
+    } catch (error) {
+      console.warn("[AddMeal] Failed to save selected foods", error);
+      Alert.alert("Could not save meal", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!shouldFocusSearch) {
       return;
     }
 
-    setActiveTab(2);
+    setActiveTab(FOOD_TAB_INDEX);
     const timer = setTimeout(() => {
-      pagerRef.current?.scrollTo({ x: 2 * SCREEN_WIDTH, animated: false });
+      pagerRef.current?.scrollTo({ x: FOOD_TAB_INDEX * SCREEN_WIDTH, animated: false });
     }, 0);
 
     return () => clearTimeout(timer);
   }, [shouldFocusSearch]);
+
+  useEffect(() => {
+    if (params.tab !== "saved-meals") {
+      return;
+    }
+
+    setActiveTab(SAVED_MEALS_TAB_INDEX);
+    const timer = setTimeout(() => {
+      pagerRef.current?.scrollTo({ x: SAVED_MEALS_TAB_INDEX * SCREEN_WIDTH, animated: false });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [params.tab]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }} edges={["top"]}>
@@ -686,7 +1139,7 @@ export default function AddMealScreen() {
             <Ionicons name="chevron-down" size={16} color={SCREEN_COLORS.textMuted} />
           </TouchableOpacity>
           <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
-            {formatHeaderDate(today)}
+            {formatHeaderDate(selectedDate)}
           </Text>
         </View>
 
@@ -752,7 +1205,11 @@ export default function AddMealScreen() {
           <RecipesTab />
         </View>
         <View style={{ width: SCREEN_WIDTH }}>
-          <FoodTab autoFocus={shouldFocusSearch && activeTab === 2} />
+          <FoodTab
+            autoFocus={shouldFocusSearch && activeTab === FOOD_TAB_INDEX}
+            selectedFoodIds={selectedFoodIds}
+            onToggleFood={toggleFood}
+          />
         </View>
         <View style={{ width: SCREEN_WIDTH }}>
           <RecentlyEatenTab meal={mealLabel} />
@@ -761,7 +1218,13 @@ export default function AddMealScreen() {
           <MostEatenTab />
         </View>
         <View style={{ width: SCREEN_WIDTH }}>
-          <SavedMealsTab />
+          <SavedMealsTab
+            selectedFoodIds={selectedFoodIds}
+            mealType={mealType}
+            selectedDate={selectedDate}
+            selectedDateIso={selectedDateIso}
+            onLogged={() => setSelectedFoodIds([])}
+          />
         </View>
       </ScrollView>
 
@@ -776,8 +1239,33 @@ export default function AddMealScreen() {
           flexDirection: "row",
           justifyContent: "space-around",
           alignItems: "center",
+          gap: 10,
+          paddingHorizontal: 16,
         }}
       >
+        <TouchableOpacity
+          activeOpacity={0.8}
+          disabled={selectedFoodIds.length === 0 || isSaving}
+          onPress={() => void saveSelectedFoods()}
+          style={{
+            flex: 1,
+            height: 52,
+            borderRadius: 14,
+            backgroundColor: SCREEN_COLORS.primary,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: selectedFoodIds.length === 0 || isSaving ? 0.55 : 1,
+          }}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: "#fff", fontSize: 15, fontWeight: "800" }}>
+              {selectedFoodIds.length ? `Add ${selectedFoodIds.length} to ${String(mealLabel)}` : "Select food"}
+            </Text>
+          )}
+        </TouchableOpacity>
+
         {/* Camera */}
         <TouchableOpacity
           activeOpacity={0.8}

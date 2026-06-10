@@ -1,22 +1,28 @@
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  ActivityIndicator,
+  Alert,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { createPremiumOrder, getPremiumStatus, verifyPremiumPayment } from "../src/services/backendApi";
 
 // ─── Data (unchanged) ────────────────────────────────────────────────────────
 
 const FEATURES = [
   "Personalized AI coach",
   "1-on-1 nutritionist chat",
+  "Custom saved meals",
   "Advanced reports",
 ];
 
@@ -44,6 +50,12 @@ const FEATURE_META: Record<
     color: "#38BDF8",
     bg: "rgba(56,189,248,0.12)",
     desc: "Chat directly with a certified nutritionist anytime",
+  },
+  "Custom saved meals": {
+    icon: "bookmark-outline",
+    color: "#F59E0B",
+    bg: "rgba(245,158,11,0.12)",
+    desc: "Save full meal combinations and log them in one tap",
   },
   "Advanced reports": {
     icon: "bar-chart-outline",
@@ -106,7 +118,60 @@ function FeatureRow({ label }: { label: string }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function PremiumScreen() {
+  const router = useRouter();
   const [selected, setSelected] = useState(0);
+  const [isBuying, setIsBuying] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (isBuying) return;
+
+    try {
+      setIsBuying(true);
+      const { order, payment } = await createPremiumOrder("monthly");
+
+      if (!payment?.enabled || Platform.OS === "web") {
+        Alert.alert(
+          "Payment unavailable",
+          payment?.enabled
+            ? "Open the Android/iOS app to complete Razorpay payment."
+            : "Razorpay keys are not configured on the backend yet."
+        );
+        return;
+      }
+
+      const RazorpayCheckout = require("react-native-razorpay").default;
+      const result = await RazorpayCheckout.open({
+        key: payment.keyId,
+        amount: payment.amount,
+        currency: payment.currency,
+        name: payment.name,
+        description: payment.description,
+        order_id: payment.orderId,
+        prefill: payment.prefill,
+        theme: { color: SCREEN_COLORS.primary },
+      });
+
+      await verifyPremiumPayment({
+        orderId: order._id,
+        razorpay_order_id: result.razorpay_order_id,
+        razorpay_payment_id: result.razorpay_payment_id,
+        razorpay_signature: result.razorpay_signature,
+      });
+
+      const status = await getPremiumStatus();
+      if (!status?.isPremium) {
+        throw new Error("Payment succeeded, but premium is not active yet.");
+      }
+
+      Alert.alert("Premium active", "Smart reminders are unlocked.", [
+        { text: "Set reminders", onPress: () => router.replace("/reminders") },
+      ]);
+    } catch (error) {
+      Alert.alert("Premium purchase failed", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setIsBuying(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -296,6 +361,8 @@ export default function PremiumScreen() {
           {/* ── Subscribe CTA ── */}
           <TouchableOpacity
             activeOpacity={0.85}
+            disabled={isBuying}
+            onPress={() => void handleSubscribe()}
             style={{
               height: 56,
               borderRadius: 16,
@@ -305,14 +372,21 @@ export default function PremiumScreen() {
               flexDirection: "row",
               gap: 8,
               marginBottom: 14,
+              opacity: isBuying ? 0.65 : 1,
             }}
           >
-            <Ionicons name="star" size={18} color="#ffffff" />
-            <Text
-              style={{ color: "#ffffff", fontSize: 17, fontWeight: "800" }}
-            >
-              Subscribe Now
-            </Text>
+            {isBuying ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Ionicons name="star" size={18} color="#ffffff" />
+                <Text
+                  style={{ color: "#ffffff", fontSize: 17, fontWeight: "800" }}
+                >
+                  Subscribe Now
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
 
           {/* ── Restore + Terms ── */}

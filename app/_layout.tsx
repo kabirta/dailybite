@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NutritionProvider } from "../src/context/NutritionContext";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -37,12 +38,14 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      />
+      <NutritionProvider>
+        <StatusBar style="auto" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        />
+      </NutritionProvider>
     </SafeAreaProvider>
   );
 }

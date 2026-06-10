@@ -26,6 +26,19 @@ const REPORT_TABS = [
 ] as const;
 
 type ReportTabKey = (typeof REPORT_TABS)[number]["key"];
+type ReportRange = "day" | "week" | "month";
+
+const REPORT_RANGE_OPTIONS: { key: ReportRange; label: string }[] = [
+  { key: "day", label: "Today" },
+  { key: "week", label: "This Week" },
+  { key: "month", label: "This Month" },
+];
+
+const RANGE_TITLE: Record<ReportRange, string> = {
+  day: "Today",
+  week: "Weekly",
+  month: "Monthly",
+};
 
 const WEEK_DAYS = ["Mo 2", "Tu 3", "We 4", "Th 5", "Fr 6", "Sa 7", "Su 8"];
 const STEP_GOAL = 10000;
@@ -259,12 +272,26 @@ function ReportsHeader() {
 
 // ─── Week Picker ──────────────────────────────────────────────────────────────
 
-function WeekPicker() {
+function WeekPicker({
+  selectedRange,
+  onChange,
+}: {
+  selectedRange: ReportRange;
+  onChange: (range: ReportRange) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedIndex = REPORT_RANGE_OPTIONS.findIndex((option) => option.key === selectedRange);
+  const selectedOption = REPORT_RANGE_OPTIONS[selectedIndex] ?? REPORT_RANGE_OPTIONS[1];
+  const cycleRange = (direction: -1 | 1) => {
+    const nextIndex =
+      (selectedIndex + direction + REPORT_RANGE_OPTIONS.length) % REPORT_RANGE_OPTIONS.length;
+    onChange(REPORT_RANGE_OPTIONS[nextIndex].key);
+    setIsOpen(false);
+  };
+
   return (
     <View
       style={{
-        flexDirection: "row",
-        alignItems: "center",
         backgroundColor: CARD,
         borderRadius: 14,
         borderWidth: 1,
@@ -273,60 +300,116 @@ function WeekPicker() {
         overflow: "hidden",
       }}
     >
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={{
-          width: 52,
-          height: 50,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name="caret-back" size={20} color={TEXT_PRIMARY} />
-      </TouchableOpacity>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => cycleRange(-1)}
+          style={{
+            width: 52,
+            height: 50,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="caret-back" size={20} color={TEXT_PRIMARY} />
+        </TouchableOpacity>
 
-      <View
-        style={{
-          flex: 1,
-          height: 50,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderLeftWidth: 1,
-          borderRightWidth: 1,
-          borderColor: BORDER,
-          paddingHorizontal: 14,
-        }}
-      >
-        <Text style={{ color: TEXT_PRIMARY, fontSize: 16, fontWeight: "600" }}>
-          This Week
-        </Text>
-        <Ionicons name="chevron-down" size={18} color={TEXT_SECONDARY} />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setIsOpen((value) => !value)}
+          style={{
+            flex: 1,
+            height: 50,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: BORDER,
+            paddingHorizontal: 14,
+          }}
+        >
+          <Text style={{ color: TEXT_PRIMARY, fontSize: 16, fontWeight: "600" }}>
+            {selectedOption.label}
+          </Text>
+          <Ionicons
+            name={isOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={TEXT_SECONDARY}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => cycleRange(1)}
+          style={{
+            width: 52,
+            height: 50,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="caret-forward" size={20} color={TEXT_PRIMARY} />
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={{
-          width: 52,
-          height: 50,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name="caret-forward" size={20} color={TEXT_PRIMARY} />
-      </TouchableOpacity>
+      {isOpen ? (
+        <View style={{ borderTopWidth: 1, borderTopColor: BORDER }}>
+          {REPORT_RANGE_OPTIONS.map((option) => {
+            const isSelected = option.key === selectedRange;
+            return (
+              <TouchableOpacity
+                key={option.key}
+                activeOpacity={0.8}
+                onPress={() => {
+                  onChange(option.key);
+                  setIsOpen(false);
+                }}
+                style={{
+                  minHeight: 46,
+                  paddingHorizontal: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: isSelected ? SCREEN_COLORS.cardSoft : CARD,
+                }}
+              >
+                <Text
+                  style={{
+                    color: isSelected ? ACCENT : TEXT_PRIMARY,
+                    fontSize: 15,
+                    fontWeight: isSelected ? "700" : "500",
+                  }}
+                >
+                  {option.label}
+                </Text>
+                {isSelected ? <Ionicons name="checkmark" size={18} color={ACCENT} /> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
 
 // ─── Calories Panel ───────────────────────────────────────────────────────────
 
-function CaloriesPanel({ analytics, report }: { analytics: any; report: any }) {
+function CaloriesPanel({
+  analytics,
+  report,
+  range,
+}: {
+  analytics: any;
+  report: any;
+  range: ReportRange;
+}) {
   const totals = report?.totals ?? {};
   const meals = report?.meals ?? {};
   const dailyCalories = Math.round(totals.calories ?? 0);
   const days = analytics?.days ?? [];
   const weeklyCalories = days.reduce((sum: number, day: any) => sum + Number(day?.caloriesConsumed ?? 0), 0);
+  const rangeTitle = RANGE_TITLE[range];
   const calorieGoal = Math.round(report?.calorieTarget ?? 3000);
   const mealRows = MEAL_ROWS.map((meal) => {
     const key = meal.label === "Snacks/Other" ? "snacks" : meal.label.toLowerCase();
@@ -348,7 +431,7 @@ function CaloriesPanel({ analytics, report }: { analytics: any; report: any }) {
       <Card>
         <View style={{ padding: 16 }}>
           <Text style={{ color: TEXT_SECONDARY, fontSize: 12, fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
-            Weekly Total
+            {rangeTitle} Total
           </Text>
           <Text
             style={{
@@ -542,13 +625,14 @@ function CaloriesPanel({ analytics, report }: { analytics: any; report: any }) {
 
 // ─── Macros Panel ─────────────────────────────────────────────────────────────
 
-function HydrationPanel({ analytics }: { analytics: any }) {
+function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRange }) {
   const days = analytics?.days ?? [];
   const weeklyWater = days.reduce((total: number, day: any) => total + Number(day?.water?.totalMl ?? 0), 0);
   const dailyAverage = days.length ? Math.round(weeklyWater / days.length) : 0;
   const latestGoal = Number(days[days.length - 1]?.water?.goalMl ?? 2500);
   const weeklyGoal = latestGoal * Math.max(days.length, 1);
   const weeklyPct = Math.min(weeklyWater / Math.max(weeklyGoal, 1), 1);
+  const rangeTitle = RANGE_TITLE[range];
 
   return (
     <View style={{ gap: 12 }}>
@@ -573,7 +657,7 @@ function HydrationPanel({ analytics }: { analytics: any }) {
                   textTransform: "uppercase",
                 }}
               >
-                Weekly Hydration
+                {rangeTitle} Hydration
               </Text>
               <Text
                 style={{
@@ -1019,6 +1103,7 @@ function NutrientsPanel({ report }: { report: any }) {
 
 export default function ReportsScreen() {
   const [activeTab, setActiveTab] = useState<ReportTabKey>("nutrients");
+  const [selectedRange, setSelectedRange] = useState<ReportRange>("week");
   const [analytics, setAnalytics] = useState<any>(null);
   const [report, setReport] = useState<any>(null);
   const pagerRef = useRef<ScrollView>(null);
@@ -1032,7 +1117,7 @@ export default function ReportsScreen() {
 
   useEffect(() => {
     let isActive = true;
-    getDiaryAnalytics({ range: "week" })
+    getDiaryAnalytics({ range: selectedRange })
       .then((data) => {
         if (isActive) {
           setAnalytics(data);
@@ -1049,7 +1134,7 @@ export default function ReportsScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [selectedRange]);
 
   const onTabPress = (tabKey: ReportTabKey) => {
     const tabIndex = REPORT_TABS.findIndex((tab) => tab.key === tabKey);
@@ -1078,7 +1163,7 @@ export default function ReportsScreen() {
           }}
         >
           <Header />
-          <WeekPicker />
+          <WeekPicker selectedRange={selectedRange} onChange={setSelectedRange} />
 
           {/* ── Tab bar ── */}
           <View
@@ -1132,10 +1217,10 @@ export default function ReportsScreen() {
             scrollEventThrottle={16}
           >
             <View style={{ width: pageWidth }}>
-              <CaloriesPanel analytics={analytics} report={report} />
+              <CaloriesPanel analytics={analytics} report={report} range={selectedRange} />
             </View>
             <View style={{ width: pageWidth }}>
-              <HydrationPanel analytics={analytics} />
+              <HydrationPanel analytics={analytics} range={selectedRange} />
             </View>
             <View style={{ width: pageWidth }}>
               <MacrosPanel report={report} />

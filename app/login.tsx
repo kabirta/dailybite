@@ -1,31 +1,94 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { loginWithFirebaseUser } from "../src/services/backendApi";
+import { signInWithGoogle } from "../src/services/authService";
+
+function getGoogleSignInErrorMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "auth/account-exists-with-different-credential"
+  ) {
+    return "This email is already linked to another sign-in method.";
+  }
+
+  if (error instanceof Error) {
+    if (
+      error.message.includes("RNGoogleSignin") ||
+      error.message.includes("TurboModuleRegistry")
+    ) {
+      return "Native Google Sign-In is not available in this build. Rebuild the app, or use the browser sign-in fallback.";
+    }
+
+    return error.message;
+  }
+
+  return "Something went wrong while signing in with Google.";
+}
 
 export default function LoginScreen() {
   const router = useRouter();
   const { provider } = useLocalSearchParams<{ provider?: string }>();
   const isGoogleSignIn = provider === "google";
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    if (isSigningIn) {
+      return;
+    }
+
+    try {
+      setIsSigningIn(true);
+      const result = await signInWithGoogle();
+
+      if (!result) {
+        return;
+      }
+
+      await loginWithFirebaseUser(result.user);
+      router.replace("/diary");
+    } catch (error) {
+      Alert.alert("Google Sign-In Failed", getGoogleSignInErrorMessage(error));
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }}>
       <ScreenBackground>
       <View className="flex-1 items-center justify-center px-7">
         <Text className="text-center text-[48px] font-extrabold leading-[58px] text-[#072d66]">
-          {isGoogleSignIn ? "Google Sign-In" : "Login Screen"}
+          {isGoogleSignIn ? "Google Sign-In" : "Welcome back"}
         </Text>
         <Text className="mt-4 text-center text-[26px] leading-9 text-[#5f7492]">
           {isGoogleSignIn
-            ? "Your Google sign-in flow can continue from here."
-            : "Your onboarding answers are ready. Connect your auth flow here."}
+            ? "Continue with Google to finish signing in."
+            : "Sign in to sync your diary, reports, and goals."}
         </Text>
 
         <Pressable
-          className="mt-10 h-16 w-full items-center justify-center rounded-2xl bg-[#127dff]"
+          className="mt-10 h-16 w-full flex-row items-center justify-center rounded-2xl bg-[#127dff] active:opacity-90"
+          disabled={isSigningIn}
+          onPress={handleGoogleSignIn}
+        >
+          {isSigningIn ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text className="text-[22px] font-bold text-white">Sign in with Google</Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          className="mt-5 h-14 w-full items-center justify-center rounded-2xl"
+          disabled={isSigningIn}
           onPress={() => router.replace("/")}
         >
-          <Text className="text-[26px] font-bold text-white">Back to Welcome</Text>
+          <Text className="text-[20px] font-bold text-[#127dff]">Back to Welcome</Text>
         </Pressable>
       </View>
       </ScreenBackground>

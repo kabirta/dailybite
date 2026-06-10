@@ -34,6 +34,7 @@ type NutritionContextValue = {
   editMeal: (entryId: string, input: Record<string, any>, date?: Date) => Promise<any>;
   removeMeal: (entryId: string, date?: Date) => Promise<any>;
   logFood: (input: LogFoodInput) => Promise<any>;
+  logFoods: (inputs: LogFoodInput[], date?: Date) => Promise<any[]>;
   refreshGoals: () => Promise<any[]>;
   refreshDailyReport: (date?: Date) => Promise<any>;
   setGoal: (type: string, input: Record<string, any>) => Promise<any>;
@@ -76,6 +77,32 @@ export function NutritionProvider({ children }: { children: React.ReactNode }) {
       const entry = await addFoodToMeal({ foodId, mealType, quantity, date });
       await refreshDailyReport(date);
       return entry;
+    },
+    [refreshDailyReport]
+  );
+
+  const logFoods = useCallback(
+    async (inputs: LogFoodInput[], date: Date = new Date()) => {
+      const uniqueInputs = inputs.filter(
+        (input, index, list) => list.findIndex((item) => item.foodId === input.foodId && item.mealType === input.mealType) === index
+      );
+
+      const entries = [];
+      // Save first, then refresh once. This prevents transient UI overwrites from
+      // repeated report refetches while adding several selected breakfast foods.
+      for (const input of uniqueInputs) {
+        entries.push(
+          await addFoodToMeal({
+            foodId: input.foodId,
+            mealType: input.mealType,
+            quantity: input.quantity ?? 1,
+            date: input.date ?? date,
+          })
+        );
+      }
+
+      await refreshDailyReport(date);
+      return entries;
     },
     [refreshDailyReport]
   );
@@ -179,6 +206,7 @@ export function NutritionProvider({ children }: { children: React.ReactNode }) {
       addWeight,
       editMeal,
       logFood,
+      logFoods,
       refreshGoals,
       refreshDailyReport,
       removeMeal,
@@ -196,6 +224,7 @@ export function NutritionProvider({ children }: { children: React.ReactNode }) {
       isLoadingReport,
       lastDeletedMealEntry,
       logFood,
+      logFoods,
       refreshDailyReport,
       refreshGoals,
       removeMeal,

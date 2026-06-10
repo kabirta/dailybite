@@ -164,11 +164,12 @@ function MetricCard({
   );
 }
 
-function QuickButton({ label, onPress }: { label: string; onPress: () => void }) {
+function QuickButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.75}
+      disabled={disabled}
       style={{
         flex: 1,
         minHeight: 38,
@@ -178,6 +179,7 @@ function QuickButton({ label, onPress }: { label: string; onPress: () => void })
         borderColor: SCREEN_COLORS.border,
         alignItems: "center",
         justifyContent: "center",
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       <Text style={{ color: SCREEN_COLORS.primary, fontSize: 13, fontWeight: "700" }}>{label}</Text>
@@ -189,10 +191,12 @@ function InlineInput({
   value,
   onChangeText,
   placeholder,
+  editable = true,
 }: {
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
+  editable?: boolean;
 }) {
   return (
     <TextInput
@@ -201,6 +205,7 @@ function InlineInput({
       placeholder={placeholder}
       placeholderTextColor={SCREEN_COLORS.textMuted}
       keyboardType="numeric"
+      editable={editable}
       style={{
         flex: 1,
         minHeight: 40,
@@ -211,9 +216,15 @@ function InlineInput({
         paddingHorizontal: 12,
         color: SCREEN_COLORS.text,
         fontSize: 14,
+        opacity: editable ? 1 : 0.6,
       }}
     />
   );
+}
+
+function parsePositiveNumber(value: string) {
+  const numeric = Number(value.replace(/,/g, "").trim());
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 }
 
 export default function DiaryHomeScreen() {
@@ -245,6 +256,7 @@ export default function DiaryHomeScreen() {
   const [weightKg, setWeightKg] = useState("");
   const [exerciseMinutes, setExerciseMinutes] = useState("30");
   const [sleepHours, setSleepHours] = useState("8");
+  const [savingMetric, setSavingMetric] = useState<"" | "water" | "weight" | "exercise" | "sleep">("");
 
   useEffect(() => {
     let isActive = true;
@@ -290,36 +302,43 @@ export default function DiaryHomeScreen() {
     }
 
     try {
+      setSavingMetric("water");
       await addWater({ amountMl, loggedAt: buildLogTime(selectedDateForCalendar) }, selectedDateForCalendar);
       setCustomWaterMl("");
     } catch (error) {
       Alert.alert("Water log failed", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setSavingMetric("");
     }
   };
 
   const handleWeight = async () => {
-    const weightValue = Number(weightKg);
-    if (!Number.isFinite(weightValue) || weightValue <= 0) {
+    const weightValue = parsePositiveNumber(weightKg);
+    if (!weightValue) {
       Alert.alert("Weight", "Enter a valid weight in kg.");
       return;
     }
 
     try {
+      setSavingMetric("weight");
       await addWeight({ weight: weightValue, loggedAt: buildLogTime(selectedDateForCalendar) }, selectedDateForCalendar);
       setWeightKg("");
     } catch (error) {
       Alert.alert("Weight log failed", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setSavingMetric("");
     }
   };
 
   const handleExercise = async () => {
-    const minutes = Number(exerciseMinutes);
-    if (!Number.isFinite(minutes) || minutes <= 0) {
+    const minutes = parsePositiveNumber(exerciseMinutes);
+    if (!minutes) {
       Alert.alert("Exercise", "Enter exercise duration in minutes.");
       return;
     }
 
     try {
+      setSavingMetric("exercise");
       await addExercise(
         {
           exerciseName: "Walking",
@@ -333,18 +352,21 @@ export default function DiaryHomeScreen() {
       setExerciseMinutes("30");
     } catch (error) {
       Alert.alert("Exercise log failed", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setSavingMetric("");
     }
   };
 
   const handleSleep = async () => {
-    const hours = Number(sleepHours);
-    if (!Number.isFinite(hours) || hours <= 0) {
+    const hours = parsePositiveNumber(sleepHours);
+    if (!hours) {
       Alert.alert("Sleep", "Enter sleep hours.");
       return;
     }
 
     const { sleepStart, sleepEnd } = buildSleepWindow(selectedDateForCalendar, hours);
     try {
+      setSavingMetric("sleep");
       await addSleep(
         {
           sleepStart: sleepStart.toISOString(),
@@ -356,6 +378,8 @@ export default function DiaryHomeScreen() {
       setSleepHours("8");
     } catch (error) {
       Alert.alert("Sleep log failed", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setSavingMetric("");
     }
   };
 
@@ -530,24 +554,38 @@ export default function DiaryHomeScreen() {
           >
             <ProgressLine label="Water" value={Number(water.totalMl ?? 0)} target={Number(water.goalMl ?? 2500)} color="#38BDF8" />
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <QuickButton label="250ml" onPress={() => void handleWater(250)} />
-              <QuickButton label="500ml" onPress={() => void handleWater(500)} />
-              <QuickButton label="1L" onPress={() => void handleWater(1000)} />
+              <QuickButton label="250ml" disabled={savingMetric === "water"} onPress={() => setCustomWaterMl("250")} />
+              <QuickButton label="500ml" disabled={savingMetric === "water"} onPress={() => setCustomWaterMl("500")} />
+              <QuickButton label="1L" disabled={savingMetric === "water"} onPress={() => setCustomWaterMl("1000")} />
             </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <InlineInput value={customWaterMl} onChangeText={setCustomWaterMl} placeholder="Custom ml" />
+              <InlineInput
+                value={customWaterMl}
+                onChangeText={setCustomWaterMl}
+                placeholder="Custom ml"
+                editable={savingMetric !== "water"}
+              />
               <TouchableOpacity
-                onPress={() => void handleWater(Number(customWaterMl))}
+                onPress={() => {
+                  const amountMl = parsePositiveNumber(customWaterMl);
+                  void handleWater(amountMl ?? 0);
+                }}
                 activeOpacity={0.75}
+                disabled={savingMetric === "water"}
                 style={{
                   width: 86,
                   borderRadius: 12,
                   backgroundColor: SCREEN_COLORS.primary,
                   alignItems: "center",
                   justifyContent: "center",
+                  opacity: savingMetric === "water" ? 0.65 : 1,
                 }}
               >
-                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Add</Text>
+                {savingMetric === "water" ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Add</Text>
+                )}
               </TouchableOpacity>
             </View>
           </MetricCard>
@@ -568,8 +606,17 @@ export default function DiaryHomeScreen() {
                   color="#8B5CF6"
                 />
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  <InlineInput value={sleepHours} onChangeText={setSleepHours} placeholder="Hours" />
-                  <QuickButton label="Log" onPress={() => void handleSleep()} />
+                  <InlineInput
+                    value={sleepHours}
+                    onChangeText={setSleepHours}
+                    placeholder="Hours"
+                    editable={savingMetric !== "sleep"}
+                  />
+                  <QuickButton
+                    label={savingMetric === "sleep" ? "..." : "Log"}
+                    disabled={savingMetric === "sleep"}
+                    onPress={() => void handleSleep()}
+                  />
                 </View>
               </MetricCard>
             </View>
@@ -588,8 +635,17 @@ export default function DiaryHomeScreen() {
                   color="#22C55E"
                 />
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  <InlineInput value={exerciseMinutes} onChangeText={setExerciseMinutes} placeholder="Min" />
-                  <QuickButton label="Log" onPress={() => void handleExercise()} />
+                  <InlineInput
+                    value={exerciseMinutes}
+                    onChangeText={setExerciseMinutes}
+                    placeholder="Min"
+                    editable={savingMetric !== "exercise"}
+                  />
+                  <QuickButton
+                    label={savingMetric === "exercise" ? "..." : "Log"}
+                    disabled={savingMetric === "exercise"}
+                    onPress={() => void handleExercise()}
+                  />
                 </View>
               </MetricCard>
             </View>
@@ -606,19 +662,30 @@ export default function DiaryHomeScreen() {
             iconColor="#F97316"
           >
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <InlineInput value={weightKg} onChangeText={setWeightKg} placeholder="Weight kg" />
+              <InlineInput
+                value={weightKg}
+                onChangeText={setWeightKg}
+                placeholder="Weight kg"
+                editable={savingMetric !== "weight"}
+              />
               <TouchableOpacity
                 onPress={() => void handleWeight()}
                 activeOpacity={0.75}
+                disabled={savingMetric === "weight"}
                 style={{
                   width: 86,
                   borderRadius: 12,
                   backgroundColor: SCREEN_COLORS.primary,
                   alignItems: "center",
                   justifyContent: "center",
+                  opacity: savingMetric === "weight" ? 0.65 : 1,
                 }}
               >
-                <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Save</Text>
+                {savingMetric === "weight" ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Save</Text>
+                )}
               </TouchableOpacity>
             </View>
           </MetricCard>
@@ -626,9 +693,10 @@ export default function DiaryHomeScreen() {
           {showCustomMeals && (
             <InfoCard
               title="Custom Meals"
-              subtitle="Track more than the main meals"
+              subtitle="Save and log premium meal combinations"
               iconName="restaurant"
               iconColor="#EF4444"
+              onPress={() => router.push(`/add-meal?meal=Breakfast&date=${selectedDateIso}&tab=saved-meals`)}
               onClose={() => setShowCustomMeals(false)}
             />
           )}
@@ -636,9 +704,10 @@ export default function DiaryHomeScreen() {
           {showWaterTracker && (
             <InfoCard
               title="Smart Reminders"
-              subtitle="Water, meal, sleep, and exercise nudges are ready for your goals"
+              subtitle="Premium water, meal, sleep, and exercise nudges"
               iconName="notifications-outline"
               iconColor="#38BDF8"
+              onPress={() => router.push("/reminders")}
               onClose={() => setShowWaterTracker(false)}
             />
           )}
