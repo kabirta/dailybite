@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
-import { loginWithFirebaseUser } from "../src/services/backendApi";
+import { hasCompletedOnboarding, loginWithFirebaseUser } from "../src/services/backendApi";
 import { signInWithGoogle } from "../src/services/authService";
 
 function getGoogleSignInErrorMessage(error: unknown) {
@@ -30,6 +30,12 @@ function getGoogleSignInErrorMessage(error: unknown) {
   return "Something went wrong while signing in with Google.";
 }
 
+function isOnboardingRequiredError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes("onboarding required") || message.includes("sign up questions");
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const { provider } = useLocalSearchParams<{ provider?: string }>();
@@ -49,9 +55,18 @@ export default function LoginScreen() {
         return;
       }
 
-      await loginWithFirebaseUser(result.user);
-      router.replace("/diary");
+      const session = await loginWithFirebaseUser(result.user);
+      router.replace(hasCompletedOnboarding(session) ? "/diary" : "/onboarding");
     } catch (error) {
+      if (isOnboardingRequiredError(error)) {
+        Alert.alert(
+          "Sign up required",
+          "New users must complete the sign up questions before entering the app.",
+          [{ text: "Start sign up", onPress: () => router.replace("/onboarding") }]
+        );
+        return;
+      }
+
       Alert.alert("Google Sign-In Failed", getGoogleSignInErrorMessage(error));
     } finally {
       setIsSigningIn(false);

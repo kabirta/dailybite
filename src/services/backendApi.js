@@ -6,6 +6,7 @@ import { auth } from "../config/firebase";
 
 const ACCESS_TOKEN_KEY = "dailybite.accessToken";
 const REFRESH_TOKEN_KEY = "dailybite.refreshToken";
+const ONBOARDING_COMPLETE_KEY = "dailybite.onboardingComplete";
 const DEFAULT_API_BASE_URL = "https://nutrimed-backend.vercel.app/api/v1";
 
 class BackendError extends Error {
@@ -112,7 +113,16 @@ export async function loginWithFirebaseUser(firebaseUser, onboarding) {
     await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
   }
 
+  await AsyncStorage.setItem(
+    ONBOARDING_COMPLETE_KEY,
+    data?.healthAssessment ? "true" : "false"
+  );
+
   return data;
+}
+
+export function hasCompletedOnboarding(session) {
+  return Boolean(session?.healthAssessment);
 }
 
 export async function saveHealthAssessment(accessToken, answers) {
@@ -135,7 +145,7 @@ export async function searchFoods(query = "") {
 }
 
 export async function clearBackendSession() {
-  await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY]);
+  await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ONBOARDING_COMPLETE_KEY]);
 }
 
 function waitForFirebaseUser(timeoutMs = FIREBASE_USER_WAIT_MS) {
@@ -180,7 +190,14 @@ async function getBackendAccessToken() {
 }
 
 export async function ensureBackendSession() {
-  return getBackendAccessToken();
+  const accessToken = await getBackendAccessToken();
+  if (!accessToken) return null;
+
+  const onboardingComplete = await AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY);
+  return {
+    accessToken,
+    onboardingComplete: onboardingComplete === "true",
+  };
 }
 
 export async function refreshBackendSession() {
@@ -224,6 +241,29 @@ async function authenticatedRequest(path, options = {}) {
       },
     });
   }
+}
+
+async function authenticatedMultipartRequest(path, formData) {
+  const accessToken = await getBackendAccessToken();
+  if (!accessToken) {
+    throw new Error("Please sign in again before syncing your diary.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const details = payload.errors?.map((item) => `${item.field}: ${item.message}`).join(", ");
+    throw new BackendError(details || payload.message || "Backend request failed", response.status, payload);
+  }
+
+  return payload.data;
 }
 
 export async function searchFoodsAdvanced({ query = "", category = "", barcode = "", page = 1, limit = 30 } = {}) {
@@ -531,6 +571,80 @@ export async function logCustomMeal(mealId, payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function analyzeFoodImage({ uri, name = "meal.jpg", type = "image/jpeg", mealType }) {
+  const formData = new FormData();
+  formData.append("mealType", mealType);
+  formData.append("image", {
+    uri,
+    name,
+    type,
+  });
+
+  return authenticatedMultipartRequest("/scanner/image/analyze", formData);
+}
+
+export async function lookupBarcodeFood({ barcode, mealType }) {
+  const params = new URLSearchParams({ mealType });
+  return authenticatedRequest(`/scanner/barcode/${barcode}?${params.toString()}`);
+}
+
+export async function confirmScannedFood(payload) {
+  return authenticatedRequest("/scanner/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function listScannerHistory({ page = 1, limit = 20 } = {}) {
+  return authenticatedRequest(`/scanner/history?page=${page}&limit=${limit}`);
+}
+
+export async function getDoctors({ page = 1, limit = 20, query = "", specialty = "", mode = "" } = {}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (query.trim()) params.set("q", query.trim());
+  if (specialty.trim()) params.set("specialty", specialty.trim());
+  if (mode.trim()) params.set("mode", mode.trim());
+
+  return apiRequest(`/doctors?${params.toString()}`);
+}
+
+export async function getDoctorById(doctorId) {
+  return apiRequest(`/doctors/${doctorId}`);
+}
+
+export async function getDoctorSpecialties() {
+  return apiRequest("/doctors/specialties");
+}
+
+export async function getAvailability({ doctorId, date, mode }) {
+  const params = new URLSearchParams({ date, mode });
+  return apiRequest(`/doctors/${doctorId}/availability?${params.toString()}`);
+}
+
+export async function bookAppointment(payload) {
+  return authenticatedRequest("/appointments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getMyAppointments({ status = "upcoming", page = 1, limit = 20 } = {}) {
+  const params = new URLSearchParams({
+    status,
+    page: String(page),
+    limit: String(limit),
+  });
+
+  return authenticatedRequest(`/appointments/my?${params.toString()}`);
+}
+
+export async function cancelAppointment(appointmentId) {
+  return authenticatedRequest(`/appointments/${appointmentId}/cancel`, { method: "PATCH" });
 }
 
 export async function listAIChats({ page = 1, limit = 20 } = {}) {

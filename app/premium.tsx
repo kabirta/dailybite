@@ -1,1 +1,1 @@
-export { default } from "../screens/DoctorAppointmentScreen";
+export { default } from "../screens/PremiumScreen";

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -10,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
 
@@ -121,6 +122,8 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList<AIMessage>>(null);
   const [input, setInput] = useState("");
   const [category, setCategory] = useState("general");
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
   const {
     activeChatId,
     error,
@@ -140,6 +143,21 @@ export default function ChatScreen() {
   useEffect(() => {
     void hydrateChats();
   }, [hydrateChats]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      scrollToEnd();
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const scrollToEnd = () => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
@@ -164,7 +182,8 @@ export default function ChatScreen() {
         <Header />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
         >
           <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
             <Text style={{ color: SCREEN_COLORS.text, fontSize: 24, fontWeight: "800" }}>
@@ -208,7 +227,13 @@ export default function ChatScreen() {
             data={messages}
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
-            contentContainerStyle={{ paddingVertical: 8, paddingBottom: 12 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            contentContainerStyle={{
+              paddingVertical: 8,
+              paddingBottom: keyboardHeight ? 96 : 18,
+              flexGrow: messages.length === 0 ? 0 : 1,
+            }}
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={() => void hydrateChats()} />
             }
@@ -233,44 +258,46 @@ export default function ChatScreen() {
             </TouchableOpacity>
           ) : null}
 
-          <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
-            {["general", "symptoms", "nutrition", "sleep"].map((item) => (
+          {keyboardHeight === 0 ? (
+            <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+              {["general", "symptoms", "nutrition", "sleep"].map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => setCategory(item)}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 999,
+                    backgroundColor: category === item ? SCREEN_COLORS.primary : SCREEN_COLORS.card,
+                    borderWidth: 1,
+                    borderColor: category === item ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
+                  }}
+                >
+                  <Text style={{ color: category === item ? "#fff" : SCREEN_COLORS.text, fontSize: 11, fontWeight: "700" }}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ))}
               <TouchableOpacity
-                key={item}
-                onPress={() => setCategory(item)}
+                onPress={() => void regenerateLastUserMessage()}
+                disabled={!activeChatId || isSending}
                 style={{
+                  marginLeft: "auto",
                   paddingHorizontal: 10,
                   paddingVertical: 7,
                   borderRadius: 999,
-                  backgroundColor: category === item ? SCREEN_COLORS.primary : SCREEN_COLORS.card,
+                  backgroundColor: SCREEN_COLORS.card,
                   borderWidth: 1,
-                  borderColor: category === item ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
+                  borderColor: SCREEN_COLORS.border,
+                  opacity: !activeChatId || isSending ? 0.5 : 1,
                 }}
               >
-                <Text style={{ color: category === item ? "#fff" : SCREEN_COLORS.text, fontSize: 11, fontWeight: "700" }}>
-                  {item}
+                <Text style={{ color: SCREEN_COLORS.primary, fontSize: 11, fontWeight: "800" }}>
+                  Regenerate
                 </Text>
               </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              onPress={() => void regenerateLastUserMessage()}
-              disabled={!activeChatId || isSending}
-              style={{
-                marginLeft: "auto",
-                paddingHorizontal: 10,
-                paddingVertical: 7,
-                borderRadius: 999,
-                backgroundColor: SCREEN_COLORS.card,
-                borderWidth: 1,
-                borderColor: SCREEN_COLORS.border,
-                opacity: !activeChatId || isSending ? 0.5 : 1,
-              }}
-            >
-              <Text style={{ color: SCREEN_COLORS.primary, fontSize: 11, fontWeight: "800" }}>
-                Regenerate
-              </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+          ) : null}
 
           <View
             style={{
@@ -279,9 +306,11 @@ export default function ChatScreen() {
               gap: 10,
               paddingHorizontal: 16,
               paddingTop: 10,
-              paddingBottom: Platform.OS === "ios" ? 12 : 16,
+              paddingBottom: Math.max(insets.bottom, keyboardHeight ? 34 : 16),
+              marginBottom: keyboardHeight ? 22 : 0,
               borderTopWidth: 1,
               borderTopColor: SCREEN_COLORS.border,
+              backgroundColor: "rgba(255,255,255,0.96)",
             }}
           >
             <View
@@ -300,10 +329,18 @@ export default function ChatScreen() {
               <TextInput
                 value={input}
                 onChangeText={setInput}
+                onFocus={scrollToEnd}
                 placeholder="Ask about symptoms, sleep, nutrition..."
                 placeholderTextColor={SCREEN_COLORS.textMuted}
                 multiline
-                style={{ color: SCREEN_COLORS.text, fontSize: 14, lineHeight: 20 }}
+                textAlignVertical="top"
+                style={{
+                  color: SCREEN_COLORS.text,
+                  fontSize: 14,
+                  lineHeight: 20,
+                  maxHeight: 94,
+                  padding: 0,
+                }}
               />
             </View>
 

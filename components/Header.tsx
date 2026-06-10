@@ -1,8 +1,11 @@
+import { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 
 import { SCREEN_COLORS } from "./ScreenBackground";
+import { getUnreadNotificationCount } from "../src/services/notificationCenter";
 
 interface HeaderProps {
   notificationCount?: number;
@@ -13,13 +16,39 @@ interface HeaderProps {
 }
 
 export function Header({
-  notificationCount = 0,
+  notificationCount,
   onAvatarPress,
   onNotificationPress,
   onSearchPress,
   onCalendarPress,
 }: HeaderProps) {
   const router = useRouter();
+  const [loadedNotificationCount, setLoadedNotificationCount] = useState(0);
+  const resolvedNotificationCount = notificationCount ?? loadedNotificationCount;
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      if (notificationCount !== undefined) {
+        return () => {
+          isActive = false;
+        };
+      }
+
+      getUnreadNotificationCount()
+        .then((count) => {
+          if (isActive) setLoadedNotificationCount(count);
+        })
+        .catch(() => {
+          if (isActive) setLoadedNotificationCount(0);
+        });
+
+      return () => {
+        isActive = false;
+      };
+    }, [notificationCount])
+  );
 
   const handleAvatarPress = () => {
     onAvatarPress?.();
@@ -44,6 +73,15 @@ export function Header({
     router.push("/search");
   };
 
+  const handleNotificationPress = () => {
+    if (onNotificationPress) {
+      onNotificationPress();
+      return;
+    }
+
+    router.push("/notifications");
+  };
+
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
       {/* Avatar */}
@@ -65,10 +103,10 @@ export function Header({
       {/* Right Action Icons */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
         {/* Bell with badge */}
-        <TouchableOpacity onPress={onNotificationPress} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleNotificationPress} activeOpacity={0.7}>
           <View>
           <Ionicons name="notifications-outline" size={26} color={SCREEN_COLORS.primaryDark} />
-            {notificationCount > 0 && (
+            {resolvedNotificationCount > 0 && (
               <View
                 style={{
                   position: "absolute",
@@ -86,7 +124,7 @@ export function Header({
                 <Text
                   style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}
                 >
-                  {notificationCount}
+                  {resolvedNotificationCount > 99 ? "99+" : resolvedNotificationCount}
                 </Text>
               </View>
             )}

@@ -4,6 +4,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -12,15 +13,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 import {
   createCustomMeal,
+  analyzeFoodImage,
+  confirmScannedFood,
   deleteCustomMeal,
   getConfiguredApiBaseUrl,
+  getPremiumStatus,
   listCustomMeals,
   listRecipes,
+  lookupBarcodeFood,
   logCustomMeal,
   searchFoods,
 } from "../src/services/backendApi";
@@ -78,6 +84,40 @@ type CustomMeal = {
   };
 };
 
+type ScanFood = {
+  name: string;
+  brand?: string;
+  servingSize?: number;
+  servingUnit?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  sugar?: number;
+  fiber?: number;
+  sodium?: number;
+  confidence?: number;
+  notes?: string;
+};
+
+type ScanResult = {
+  _id: string;
+  source: "camera" | "barcode";
+  barcode?: string;
+  foods: ScanFood[];
+  totals?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    sugar?: number;
+    fiber?: number;
+  };
+  mealHealthScore?: number;
+  unhealthyFlags?: string[];
+  insight?: string;
+};
+
 type MealType = "breakfast" | "lunch" | "dinner" | "snacks" | "other";
 
 const MEAL_LABEL_TO_TYPE: Record<string, MealType> = {
@@ -125,6 +165,19 @@ function formatHeaderDate(date: Date): string {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
   ];
   return `${days[date.getDay()]}, ${months[date.getMonth()]} ${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function inferImageType(uri?: string, mimeType?: string) {
+  if (mimeType) return mimeType;
+  const lower = String(uri || "").toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
+}
+
+function toNumberInput(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(number) : "";
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
@@ -998,6 +1051,295 @@ function SavedMealsTab({
   );
 }
 
+function ScannerResultModal({
+  visible,
+  result,
+  foods,
+  barcodeInput,
+  isBusy,
+  onBarcodeChange,
+  onClose,
+  onLookupBarcode,
+  onConfirm,
+  onUpdateFood,
+}: {
+  visible: boolean;
+  result: ScanResult | null;
+  foods: ScanFood[];
+  barcodeInput: string;
+  isBusy: boolean;
+  onBarcodeChange: (value: string) => void;
+  onClose: () => void;
+  onLookupBarcode: () => void;
+  onConfirm: () => void;
+  onUpdateFood: (index: number, field: keyof ScanFood, value: string) => void;
+}) {
+  const totals = result?.totals ?? {};
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(3,17,31,0.42)",
+          justifyContent: "flex-end",
+        }}
+      >
+        <View
+          style={{
+            maxHeight: "88%",
+            backgroundColor: SCREEN_COLORS.background,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingTop: 14,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 16,
+              paddingBottom: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: SCREEN_COLORS.border,
+            }}
+          >
+            <View>
+              <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "900" }}>
+                Food scanner
+              </Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                Review before adding to diary
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={10}>
+              <Ionicons name="close" size={22} color={SCREEN_COLORS.primaryDark} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 26 }} keyboardShouldPersistTaps="handled">
+            {!result ? (
+              <View style={{ gap: 12 }}>
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 15, fontWeight: "800" }}>
+                  Scan barcode / QR code
+                </Text>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, lineHeight: 19 }}>
+                  Enter the barcode number from packaged food. The backend checks OpenFoodFacts and saves the result after confirmation.
+                </Text>
+                <TextInput
+                  value={barcodeInput}
+                  onChangeText={onBarcodeChange}
+                  keyboardType="number-pad"
+                  placeholder="Enter barcode number"
+                  placeholderTextColor={SCREEN_COLORS.textMuted}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: SCREEN_COLORS.border,
+                    backgroundColor: SCREEN_COLORS.card,
+                    paddingHorizontal: 14,
+                    color: SCREEN_COLORS.text,
+                    fontSize: 15,
+                  }}
+                />
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={isBusy || barcodeInput.replace(/\D/g, "").length < 6}
+                  onPress={onLookupBarcode}
+                  style={{
+                    height: 48,
+                    borderRadius: 14,
+                    backgroundColor: SCREEN_COLORS.primary,
+                    opacity: isBusy || barcodeInput.replace(/\D/g, "").length < 6 ? 0.55 : 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  {isBusy ? <ActivityIndicator color="#fff" /> : <Ionicons name="barcode-outline" size={19} color="#fff" />}
+                  <Text style={{ color: "#fff", fontWeight: "900" }}>Lookup food</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ gap: 14 }}>
+                <View
+                  style={{
+                    backgroundColor: SCREEN_COLORS.card,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: SCREEN_COLORS.border,
+                    padding: 14,
+                    gap: 10,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 15, fontWeight: "900" }}>
+                      {result.source === "camera" ? "AI image analysis" : "Barcode lookup"}
+                    </Text>
+                    <View
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 999,
+                        backgroundColor: SCREEN_COLORS.iconBg,
+                      }}
+                    >
+                      <Text style={{ color: SCREEN_COLORS.primaryDark, fontSize: 12, fontWeight: "800" }}>
+                        Score {Math.round(result.mealHealthScore ?? 0)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, lineHeight: 19 }}>
+                    {result.insight || "Adjust values if needed, then add this scan to your selected meal."}
+                  </Text>
+                  {(result.unhealthyFlags ?? []).length ? (
+                    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                      {result.unhealthyFlags?.map((flag) => (
+                        <Text
+                          key={flag}
+                          style={{
+                            color: "#9A3412",
+                            backgroundColor: "#FFF7ED",
+                            borderRadius: 999,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            fontSize: 12,
+                            fontWeight: "800",
+                          }}
+                        >
+                          {flag}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+
+                {foods.map((food, index) => (
+                  <View
+                    key={`${food.name}-${index}`}
+                    style={{
+                      backgroundColor: SCREEN_COLORS.card,
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: SCREEN_COLORS.border,
+                      padding: 14,
+                      gap: 10,
+                    }}
+                  >
+                    <TextInput
+                      value={food.name}
+                      onChangeText={(value) => onUpdateFood(index, "name", value)}
+                      placeholder="Food name"
+                      placeholderTextColor={SCREEN_COLORS.textMuted}
+                      style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}
+                    />
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TextInput
+                        value={toNumberInput(food.servingSize ?? 1)}
+                        onChangeText={(value) => onUpdateFood(index, "servingSize", value)}
+                        keyboardType="decimal-pad"
+                        placeholder="Serving"
+                        style={{
+                          flex: 1,
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: SCREEN_COLORS.border,
+                          paddingHorizontal: 10,
+                          color: SCREEN_COLORS.text,
+                        }}
+                      />
+                      <TextInput
+                        value={food.servingUnit ?? "serving"}
+                        onChangeText={(value) => onUpdateFood(index, "servingUnit", value)}
+                        placeholder="Unit"
+                        style={{
+                          flex: 1,
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: SCREEN_COLORS.border,
+                          paddingHorizontal: 10,
+                          color: SCREEN_COLORS.text,
+                        }}
+                      />
+                    </View>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {[
+                        ["calories", "kcal"],
+                        ["protein", "protein"],
+                        ["carbs", "carbs"],
+                        ["fat", "fat"],
+                        ["sugar", "sugar"],
+                        ["fiber", "fiber"],
+                      ].map(([field, label]) => (
+                        <View key={field} style={{ width: "31%" }}>
+                          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, marginBottom: 4 }}>
+                            {label}
+                          </Text>
+                          <TextInput
+                            value={toNumberInput(food[field as keyof ScanFood])}
+                            onChangeText={(value) => onUpdateFood(index, field as keyof ScanFood, value)}
+                            keyboardType="decimal-pad"
+                            style={{
+                              height: 38,
+                              borderRadius: 10,
+                              borderWidth: 1,
+                              borderColor: SCREEN_COLORS.border,
+                              paddingHorizontal: 8,
+                              color: SCREEN_COLORS.text,
+                              fontSize: 13,
+                            }}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, fontWeight: "800" }}>
+                    Total: {Math.round(totals.calories ?? 0)} kcal
+                  </Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, fontWeight: "800" }}>
+                    Protein: {Math.round(totals.protein ?? 0)}g
+                  </Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, fontWeight: "800" }}>
+                    Carbs: {Math.round(totals.carbs ?? 0)}g
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={isBusy}
+                  onPress={onConfirm}
+                  style={{
+                    height: 50,
+                    borderRadius: 14,
+                    backgroundColor: SCREEN_COLORS.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                    opacity: isBusy ? 0.65 : 1,
+                  }}
+                >
+                  {isBusy ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />}
+                  <Text style={{ color: "#fff", fontSize: 15, fontWeight: "900" }}>
+                    Add scanned food
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function AddMealScreen() {
@@ -1012,6 +1354,12 @@ export default function AddMealScreen() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedFoodIds, setSelectedFoodIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [scannerResult, setScannerResult] = useState<ScanResult | null>(null);
+  const [scannerFoods, setScannerFoods] = useState<ScanFood[]>([]);
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [scannerBusy, setScannerBusy] = useState(false);
+  const [scannerPremiumChecking, setScannerPremiumChecking] = useState(false);
   const pagerRef = useRef<ScrollView>(null);
 
   const selectedDate = parseIsoDateParam(params.date);
@@ -1070,6 +1418,185 @@ export default function AddMealScreen() {
       Alert.alert("Could not save meal", error instanceof Error ? error.message : "Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const showScannerPremiumAlert = () => {
+    Alert.alert(
+      "Premium scanner",
+      "Camera and QR scan are premium features. Upgrade to use meal scanning.",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "View Premium", onPress: () => router.push("/premium-plan") },
+      ]
+    );
+  };
+
+  const isScannerPremiumActive = (status: any) => {
+    const expiresAt = status?.premium?.expiresAt ? new Date(status.premium.expiresAt).getTime() : 0;
+    return Boolean(status?.isPremium || (status?.premium?.status === "active" && expiresAt > Date.now()));
+  };
+
+  const isPaymentRequiredError = (error: unknown) =>
+    typeof error === "object" && error !== null && "status" in error && (error as any).status === 402;
+
+  const ensureScannerPremium = async () => {
+    if (scannerPremiumChecking) return false;
+
+    setScannerPremiumChecking(true);
+    try {
+      const status = await getPremiumStatus();
+      if (isScannerPremiumActive(status)) {
+        return true;
+      }
+
+      showScannerPremiumAlert();
+      return false;
+    } catch (error) {
+      if (isPaymentRequiredError(error)) {
+        showScannerPremiumAlert();
+        return false;
+      }
+
+      console.warn("[Scanner] Premium check failed", error);
+      Alert.alert("Could not check premium", error instanceof Error ? error.message : "Please try again.");
+      return false;
+    } finally {
+      setScannerPremiumChecking(false);
+    }
+  };
+
+  const handleScannerPremiumError = (error: unknown) => {
+    if (!isPaymentRequiredError(error)) {
+      return false;
+    }
+
+    setScannerVisible(false);
+    showScannerPremiumAlert();
+    return true;
+  };
+
+  const openBarcodeScanner = async () => {
+    if (scannerBusy || !(await ensureScannerPremium())) return;
+
+    setScannerResult(null);
+    setScannerFoods([]);
+    setBarcodeInput("");
+    setScannerVisible(true);
+  };
+
+  const openCameraScanner = async () => {
+    if (scannerBusy) return;
+    if (!(await ensureScannerPremium())) return;
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Camera permission needed", "Allow camera access to scan meals with AI.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 0.55,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    setScannerBusy(true);
+    setScannerVisible(true);
+    setScannerResult(null);
+    setScannerFoods([]);
+
+    try {
+      const scan = await analyzeFoodImage({
+        uri: asset.uri,
+        name: asset.fileName || `meal-${Date.now()}.jpg`,
+        type: inferImageType(asset.uri, asset.mimeType),
+        mealType,
+      });
+      setScannerResult(scan);
+      setScannerFoods(scan.foods ?? []);
+    } catch (error) {
+      console.warn("[Scanner] Image analysis failed", error);
+      setScannerVisible(false);
+      if (handleScannerPremiumError(error)) return;
+      Alert.alert("Could not analyze meal", error instanceof Error ? error.message : "Please try another photo.");
+    } finally {
+      setScannerBusy(false);
+    }
+  };
+
+  const lookupBarcode = async () => {
+    const barcode = barcodeInput.replace(/\D/g, "");
+    if (barcode.length < 6 || scannerBusy) return;
+
+    setScannerBusy(true);
+    try {
+      const scan = await lookupBarcodeFood({ barcode, mealType });
+      setScannerResult(scan);
+      setScannerFoods(scan.foods ?? []);
+    } catch (error) {
+      console.warn("[Scanner] Barcode lookup failed", error);
+      if (handleScannerPremiumError(error)) return;
+      Alert.alert("Could not find barcode", error instanceof Error ? error.message : "Try another barcode.");
+    } finally {
+      setScannerBusy(false);
+    }
+  };
+
+  const updateScannerFood = (index: number, field: keyof ScanFood, value: string) => {
+    setScannerFoods((current) =>
+      current.map((food, foodIndex) => {
+        if (foodIndex !== index) return food;
+        const numericFields: Array<keyof ScanFood> = [
+          "servingSize",
+          "calories",
+          "protein",
+          "carbs",
+          "fat",
+          "sugar",
+          "fiber",
+          "sodium",
+          "confidence",
+        ];
+        return {
+          ...food,
+          [field]: numericFields.includes(field) ? Number(value) || 0 : value,
+        };
+      })
+    );
+  };
+
+  const confirmScannerResult = async () => {
+    if (!scannerResult || scannerBusy) return;
+    const validFoods = scannerFoods.filter((food) => food.name.trim());
+    if (!validFoods.length) {
+      Alert.alert("Food needed", "Keep at least one detected food before adding.");
+      return;
+    }
+
+    setScannerBusy(true);
+    try {
+      await confirmScannedFood({
+        scanId: scannerResult._id,
+        mealType,
+        date: selectedDate,
+        foods: validFoods,
+      });
+      setScannerVisible(false);
+      setScannerResult(null);
+      setScannerFoods([]);
+      router.replace(`/diary?date=${selectedDateIso}`);
+    } catch (error) {
+      console.warn("[Scanner] Confirm failed", error);
+      if (handleScannerPremiumError(error)) return;
+      Alert.alert("Could not add scanned food", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setScannerBusy(false);
     }
   };
 
@@ -1229,6 +1756,24 @@ export default function AddMealScreen() {
       </ScrollView>
 
       {/* ── Bottom Action Bar ── */}
+      <ScannerResultModal
+        visible={scannerVisible}
+        result={scannerResult}
+        foods={scannerFoods}
+        barcodeInput={barcodeInput}
+        isBusy={scannerBusy}
+        onBarcodeChange={setBarcodeInput}
+        onClose={() => {
+          if (scannerBusy) return;
+          setScannerVisible(false);
+          setScannerResult(null);
+          setScannerFoods([]);
+        }}
+        onLookupBarcode={() => void lookupBarcode()}
+        onConfirm={() => void confirmScannerResult()}
+        onUpdateFood={updateScannerFood}
+      />
+
       <View
         style={{
           backgroundColor: "rgba(255,255,255,0.94)",
@@ -1269,6 +1814,8 @@ export default function AddMealScreen() {
         {/* Camera */}
         <TouchableOpacity
           activeOpacity={0.8}
+          disabled={scannerBusy || scannerPremiumChecking}
+          onPress={() => void openCameraScanner()}
           style={{
             width: 52,
             height: 52,
@@ -1278,42 +1825,17 @@ export default function AddMealScreen() {
             borderColor: SCREEN_COLORS.primary,
             alignItems: "center",
             justifyContent: "center",
+            opacity: scannerBusy || scannerPremiumChecking ? 0.6 : 1,
           }}
         >
           <Ionicons name="camera-outline" size={24} color={SCREEN_COLORS.primary} />
         </TouchableOpacity>
 
-        {/* AI Sparkle */}
+        {/* QR / Barcode */}
         <TouchableOpacity
           activeOpacity={0.8}
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            backgroundColor: SCREEN_COLORS.iconBg,
-            borderWidth: 1,
-            borderColor: SCREEN_COLORS.primary,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="sparkles-outline" size={24} color={SCREEN_COLORS.primary} />
-          <View
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: "#F97316",
-            }}
-          />
-        </TouchableOpacity>
-
-        {/* Barcode */}
-        <TouchableOpacity
-          activeOpacity={0.8}
+          disabled={scannerBusy || scannerPremiumChecking}
+          onPress={() => void openBarcodeScanner()}
           style={{
             width: 52,
             height: 52,
@@ -1323,6 +1845,7 @@ export default function AddMealScreen() {
             borderColor: SCREEN_COLORS.primary,
             alignItems: "center",
             justifyContent: "center",
+            opacity: scannerBusy || scannerPremiumChecking ? 0.6 : 1,
           }}
         >
           <Ionicons name="barcode-outline" size={24} color={SCREEN_COLORS.primary} />

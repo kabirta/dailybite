@@ -22,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import { signInWithGoogle } from '../src/services/authService';
-import { loginWithFirebaseUser } from '../src/services/backendApi';
+import { hasCompletedOnboarding, loginWithFirebaseUser } from '../src/services/backendApi';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
 import SignInSheet from './SignInSheet';
 
@@ -75,6 +75,12 @@ function getGoogleSignInErrorMessage(error: unknown) {
   }
 
   return "Something went wrong while signing in with Google.";
+}
+
+function isOnboardingRequiredError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes("onboarding required") || message.includes("sign up questions");
 }
 
 export default function WelcomeScreen() {
@@ -149,10 +155,19 @@ export default function WelcomeScreen() {
         return;
       }
 
-      await loginWithFirebaseUser(result.user);
+      const session = await loginWithFirebaseUser(result.user);
 
-      closeSignInSheet(() => router.replace("/diary"));
+      closeSignInSheet(() => router.replace(hasCompletedOnboarding(session) ? "/diary" : "/onboarding"));
     } catch (error) {
+      if (isOnboardingRequiredError(error)) {
+        Alert.alert(
+          "Sign up required",
+          "New users must complete the sign up questions before entering the app.",
+          [{ text: "Start sign up", onPress: () => closeSignInSheet(() => router.replace("/onboarding")) }]
+        );
+        return;
+      }
+
       Alert.alert("Google Sign-In Failed", getGoogleSignInErrorMessage(error));
     } finally {
       setIsGoogleSigningIn(false);

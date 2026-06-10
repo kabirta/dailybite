@@ -18,7 +18,7 @@ interface BottomTabItem {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   activeIcon?: keyof typeof Ionicons.glyphMap;
-  href?: "/chat" | "/diary" | "/reports" | "/store" | "/premium";
+  href?: "/chat" | "/diary" | "/reports" | "/store" | "/doctor-appointment";
 }
 
 const BOTTOM_TABS: BottomTabItem[] = [
@@ -55,13 +55,13 @@ const BOTTOM_TABS: BottomTabItem[] = [
     label: "Doctor",
     icon: "medical-outline",
     activeIcon: "medical",
-    href: "/premium",
+    href: "/doctor-appointment",
   },
 ];
 
 function getActiveTabKey(pathname: string): BottomTabItem["key"] {
   if (pathname === "/chat") return "community";
-  if (pathname === "/premium") return "doctor";
+  if (pathname === "/doctor-appointment" || pathname === "/my-appointments") return "doctor";
   if (pathname === "/store") return "store";
   if (pathname === "/reports") return "reports";
   return "diary";

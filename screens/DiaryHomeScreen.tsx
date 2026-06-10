@@ -446,7 +446,7 @@ export default function DiaryHomeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_COLORS.background }} edges={["top"]}>
       <ScreenBackground>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 116 }}>
-          <Header notificationCount={1} onCalendarPress={() => router.push(`/calendar?date=${selectedDateIso}`)} />
+          <Header onCalendarPress={() => router.push(`/calendar?date=${selectedDateIso}`)} />
 
           <DaySelector currentDayIndex={currentDayIndex} streakCount={bestStreak} onDayPress={onDayPress} />
 

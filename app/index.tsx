@@ -17,8 +17,8 @@ export default function IndexScreen() {
       void (async () => {
         if (firebaseUser) {
           try {
-            await ensureBackendSession();
-            if (isActive) router.replace("/diary");
+            const session = await ensureBackendSession();
+            if (isActive) router.replace(session?.onboardingComplete ? "/diary" : "/onboarding");
           } catch (error) {
             console.warn("Could not create backend session:", error);
             if (isActive) setIsCheckingAuth(false);

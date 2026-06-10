@@ -1,11 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -17,7 +19,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
-import { createStoreOrder, listStoreProducts, verifyStorePayment } from "../src/services/backendApi";
+import {
+  createStoreOrder,
+  listMyStoreOrders,
+  listStoreProducts,
+  verifyStorePayment,
+} from "../src/services/backendApi";
 
 declare const require: any;
 
@@ -27,11 +34,18 @@ type Product = {
   shortDescription: string;
   fullDescription?: string;
   price: number;
+  compareAtPrice?: number;
   currency?: string;
   image?: string;
   accent?: string;
   benefits?: string[];
+  category?: string;
   stock?: number;
+};
+
+type CartItem = {
+  productId: string;
+  quantity: number;
 };
 
 type ShippingAddress = {
@@ -43,8 +57,18 @@ type ShippingAddress = {
   postalCode: string;
 };
 
+type StoreOrder = {
+  _id: string;
+  orderNumber: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  items?: { name: string; quantity: number; lineTotal?: number }[];
+};
+
+const CART_STORAGE_KEY = "nutrimed.store.cart";
 const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=900&q=80";
+  "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=900&q=80";
 
 const EMPTY_ADDRESS: ShippingAddress = {
   name: "",
@@ -74,142 +98,316 @@ function getRazorpayCheckout() {
   }
 }
 
+function getExpoLocation() {
+  try {
+    return require("expo-location");
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCategory(category?: string) {
+  const value = String(category || "wellness").trim();
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Wellness";
+}
+
 function ProductCard({
   product,
-  onBuyNow,
+  quantity,
+  onAdd,
+  onChangeQuantity,
+  onOpenDetails,
 }: {
   product: Product;
-  onBuyNow: (product: Product) => void;
+  quantity: number;
+  onAdd: (product: Product) => void;
+  onChangeQuantity: (product: Product, delta: number) => void;
+  onOpenDetails: (product: Product) => void;
 }) {
   const accent = getSafeAccent(product.accent);
+  const inStock = Number(product.stock ?? 0) > 0;
+  const discount =
+    product.compareAtPrice && product.compareAtPrice > product.price
+      ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+      : 0;
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.86}
+      onPress={() => onOpenDetails(product)}
       style={{
+        width: "48%",
         backgroundColor: SCREEN_COLORS.card,
-        borderRadius: 18,
-        marginBottom: 16,
-        overflow: "hidden",
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: SCREEN_COLORS.border,
+        marginBottom: 12,
+        overflow: "hidden",
       }}
     >
-      <Image
-        source={{ uri: product.image || FALLBACK_IMAGE }}
-        style={{ width: "100%", height: 178 }}
-        resizeMode="cover"
-      />
+      <View style={{ backgroundColor: SCREEN_COLORS.cardSoft, padding: 8 }}>
+        <Image
+          source={{ uri: product.image || FALLBACK_IMAGE }}
+          style={{ width: "100%", aspectRatio: 1.15, borderRadius: 8 }}
+          resizeMode="cover"
+        />
+        {discount ? (
+          <View
+            style={{
+              position: "absolute",
+              top: 10,
+              left: 10,
+              backgroundColor: "#16A34A",
+              borderRadius: 6,
+              paddingHorizontal: 6,
+              paddingVertical: 3,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>{discount}% off</Text>
+          </View>
+        ) : null}
+      </View>
 
-      <View style={{ padding: 16 }}>
-        <Text style={{ color: accent, fontWeight: "800", fontSize: 12, marginBottom: 8 }}>
-          {product.stock === 0 ? "Out of stock" : "DailyBite Store"}
+      <View style={{ padding: 10 }}>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, fontWeight: "800", marginBottom: 5 }}>
+          {normalizeCategory(product.category)}
         </Text>
-        <Text style={{ color: SCREEN_COLORS.text, fontSize: 20, fontWeight: "800", marginBottom: 8 }}>
+        <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, fontWeight: "900", minHeight: 38 }} numberOfLines={2}>
           {product.name}
         </Text>
-        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 20, marginBottom: 14 }}>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, lineHeight: 16, marginTop: 5, minHeight: 32 }} numberOfLines={2}>
           {product.shortDescription}
         </Text>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          {(product.benefits || []).slice(0, 3).map((benefit) => (
-            <View
-              key={benefit}
-              style={{
-                backgroundColor: SCREEN_COLORS.cardSoft,
-                borderRadius: 999,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-              }}
-            >
-              <Text style={{ color: SCREEN_COLORS.text, fontSize: 12, fontWeight: "600" }}>
-                {benefit}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "800" }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 8 }}>
+          <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}>
             {formatPrice(product.price)}
           </Text>
+          {product.compareAtPrice && product.compareAtPrice > product.price ? (
+            <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, textDecorationLine: "line-through" }}>
+              {formatPrice(product.compareAtPrice)}
+            </Text>
+          ) : null}
+        </View>
+
+        {!inStock ? (
+          <View style={{ height: 38, borderRadius: 8, backgroundColor: "#E2E8F0", alignItems: "center", justifyContent: "center", marginTop: 10 }}>
+            <Text style={{ color: "#64748B", fontWeight: "900" }}>Out of stock</Text>
+          </View>
+        ) : quantity > 0 ? (
+          <View style={{ height: 38, borderRadius: 8, borderWidth: 1, borderColor: accent, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+            <TouchableOpacity onPress={() => onChangeQuantity(product, -1)} style={{ width: 38, alignItems: "center" }}>
+              <Ionicons name="remove" size={18} color={accent} />
+            </TouchableOpacity>
+            <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900" }}>{quantity}</Text>
+            <TouchableOpacity onPress={() => onChangeQuantity(product, 1)} style={{ width: 38, alignItems: "center" }}>
+              <Ionicons name="add" size={18} color={accent} />
+            </TouchableOpacity>
+          </View>
+        ) : (
           <TouchableOpacity
             activeOpacity={0.85}
-            disabled={product.stock === 0}
-            onPress={() => onBuyNow(product)}
-            style={{
-              minWidth: 120,
-              height: 46,
-              borderRadius: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: product.stock === 0 ? "#94A3B8" : accent,
-              paddingHorizontal: 16,
-            }}
+            onPress={() => onAdd(product)}
+            style={{ height: 38, borderRadius: 8, borderWidth: 1, borderColor: accent, alignItems: "center", justifyContent: "center", marginTop: 10 }}
           >
-            <Text style={{ color: "#03111F", fontSize: 15, fontWeight: "800" }}>
-              Buy Now
-            </Text>
+            <Text style={{ color: accent, fontSize: 14, fontWeight: "900" }}>Add</Text>
           </TouchableOpacity>
-        </View>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export default function StoreScreen() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [query, setQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [cartVisible, setCartVisible] = useState(false);
+  const [ordersVisible, setOrdersVisible] = useState(false);
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [message, setMessage] = useState("");
 
-  const totalPrice = useMemo(() => {
-    if (!selectedProduct) return 0;
-    return selectedProduct.price * quantity;
-  }, [quantity, selectedProduct]);
+  const productMap = useMemo(() => new Map(products.map((product) => [product._id, product])), [products]);
 
-  const loadProducts = async () => {
-    setIsLoading(true);
+  const categories = useMemo(() => {
+    const values = products.map((product) => normalizeCategory(product.category));
+    return ["All", ...Array.from(new Set(values)).sort((a, b) => a.localeCompare(b))];
+  }, [products]);
+
+  const visibleProducts = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return products.filter((product) => {
+      const matchesCategory = selectedCategory === "All" || normalizeCategory(product.category) === selectedCategory;
+      const matchesQuery =
+        !search ||
+        [product.name, product.shortDescription, product.category, ...(product.benefits || [])]
+          .join(" ")
+          .toLowerCase()
+          .includes(search);
+      return matchesCategory && matchesQuery;
+    });
+  }, [products, query, selectedCategory]);
+
+  const cartLines = useMemo(
+    () =>
+      cart
+        .map((item) => ({ item, product: productMap.get(item.productId) }))
+        .filter((line): line is { item: CartItem; product: Product } => Boolean(line.product)),
+    [cart, productMap]
+  );
+
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = cartLines.reduce((sum, line) => sum + line.product.price * line.item.quantity, 0);
+  const shippingFee = subtotal >= 999 || subtotal === 0 ? 0 : 79;
+  const payableTotal = subtotal + shippingFee;
+
+  const getCartQuantity = useCallback(
+    (productId: string) => cart.find((item) => item.productId === productId)?.quantity ?? 0,
+    [cart]
+  );
+
+  const loadProducts = useCallback(async ({ refreshing = false } = {}) => {
+    if (refreshing) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setMessage("");
+
     try {
-      const data = await listStoreProducts();
-      setProducts(Array.isArray(data) ? data : []);
+      const [productData, orderData] = await Promise.all([
+        listStoreProducts(),
+        listMyStoreOrders().catch(() => []),
+      ]);
+      setProducts(Array.isArray(productData) ? productData : []);
+      setOrders(Array.isArray(orderData) ? orderData : []);
     } catch (error: any) {
-      setMessage(error?.message || "Could not load store products.");
+      setMessage(error?.message || "Could not load pharmacy products.");
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    void loadProducts();
   }, []);
 
-  const openProductSheet = (product: Product) => {
-    setSelectedProduct(product);
-    setQuantity(1);
+  useEffect(() => {
+    AsyncStorage.getItem(CART_STORAGE_KEY)
+      .then((value) => {
+        if (!value) return;
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          setCart(
+            parsed
+              .filter((item) => item?.productId && Number(item.quantity) > 0)
+              .map((item) => ({ productId: String(item.productId), quantity: Number(item.quantity) }))
+          );
+        }
+      })
+      .catch(() => undefined);
+    void loadProducts();
+  }, [loadProducts]);
+
+  useEffect(() => {
+    AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)).catch(() => undefined);
+  }, [cart]);
+
+  const changeCartQuantity = (product: Product, delta: number) => {
+    if (Number(product.stock ?? 0) <= 0) return;
+
+    setCart((current) => {
+      const existing = current.find((item) => item.productId === product._id);
+      const maxStock = Math.max(1, Number(product.stock ?? 99));
+      const nextQuantity = Math.max(0, Math.min(maxStock, (existing?.quantity ?? 0) + delta));
+
+      if (nextQuantity === 0) {
+        return current.filter((item) => item.productId !== product._id);
+      }
+
+      if (existing) {
+        return current.map((item) =>
+          item.productId === product._id ? { ...item, quantity: nextQuantity } : item
+        );
+      }
+
+      return [...current, { productId: product._id, quantity: nextQuantity }];
+    });
   };
 
-  const closeProductSheet = () => {
-    setSelectedProduct(null);
-    setQuantity(1);
-    setAddress(EMPTY_ADDRESS);
-    setIsCheckingOut(false);
-  };
-
-  const changeQuantity = (delta: number) => {
-    setQuantity((current) => Math.max(1, Math.min(selectedProduct?.stock || 99, current + delta)));
+  const addToCart = (product: Product) => {
+    changeCartQuantity(product, 1);
+    setCartVisible(true);
   };
 
   const updateAddress = (key: keyof ShippingAddress, value: string) => {
     setAddress((current) => ({ ...current, [key]: value }));
   };
 
+  const useCurrentLocation = async () => {
+    if (isLocating) return;
+
+    setIsLocating(true);
+    try {
+      const Location = getExpoLocation();
+      if (!Location) {
+        Alert.alert(
+          "Location update needed",
+          "Please install the latest app build to use automatic address detection."
+        );
+        return;
+      }
+
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert("Location permission needed", "Allow location access to auto-fill your delivery address.");
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const [place] = await Location.reverseGeocodeAsync({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+
+      if (!place) {
+        Alert.alert("Address not found", "We found your location, but could not convert it into an address.");
+        return;
+      }
+
+      const lineParts = [
+        place.name,
+        place.streetNumber,
+        place.street,
+        place.district,
+        place.subregion,
+      ]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean);
+
+      setAddress((current) => ({
+        ...current,
+        line1: lineParts.length ? Array.from(new Set(lineParts)).join(", ") : current.line1,
+        city: place.city || current.city,
+        state: place.region || current.state,
+        postalCode: place.postalCode || current.postalCode,
+      }));
+    } catch (error) {
+      console.warn("[Store] Location fetch failed", error);
+      Alert.alert("Could not fetch location", error instanceof Error ? error.message : "Please enter address manually.");
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   const checkout = async () => {
-    if (!selectedProduct || isCheckingOut) return;
+    if (!cartLines.length || isCheckingOut) return;
 
     if (!address.name.trim() || !address.phone.trim() || !address.line1.trim()) {
       Alert.alert("Delivery details needed", "Please enter your name, phone, and address.");
@@ -219,7 +417,7 @@ export default function StoreScreen() {
     setIsCheckingOut(true);
     try {
       const data = await createStoreOrder({
-        items: [{ productId: selectedProduct._id, quantity }],
+        items: cartLines.map((line) => ({ productId: line.product._id, quantity: line.item.quantity })),
         shippingAddress: address,
       });
       const { order, payment } = data;
@@ -228,19 +426,21 @@ export default function StoreScreen() {
       if (!payment?.enabled) {
         Alert.alert(
           "Order created",
-          "Razorpay keys are not configured yet. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend .env to enable live checkout."
+          "Razorpay keys are not configured yet. The order was saved in backend as pending payment."
         );
-        closeProductSheet();
+        setCart([]);
+        setCartVisible(false);
+        setAddress(EMPTY_ADDRESS);
         await loadProducts();
         return;
       }
 
       if (!RazorpayCheckout) {
-        Alert.alert(
-          "Razorpay order ready",
-          `Order ${order.orderNumber} was created. Install react-native-razorpay in the app to open the native payment sheet.`
-        );
-        closeProductSheet();
+        Alert.alert("Order ready", `Order ${order.orderNumber} was created. Razorpay native checkout is unavailable in this build.`);
+        setCart([]);
+        setCartVisible(false);
+        setAddress(EMPTY_ADDRESS);
+        await loadProducts();
         return;
       }
 
@@ -252,7 +452,7 @@ export default function StoreScreen() {
         description: payment.description,
         order_id: payment.orderId,
         prefill: payment.prefill,
-        theme: { color: getSafeAccent(selectedProduct.accent) },
+        theme: { color: SCREEN_COLORS.primary },
       });
 
       await verifyStorePayment({
@@ -262,8 +462,10 @@ export default function StoreScreen() {
         razorpay_signature: result.razorpay_signature,
       });
 
-      Alert.alert("Payment successful", "Your DailyBite order is confirmed.");
-      closeProductSheet();
+      Alert.alert("Payment successful", "Your order is confirmed.");
+      setCart([]);
+      setCartVisible(false);
+      setAddress(EMPTY_ADDRESS);
       await loadProducts();
     } catch (error: any) {
       Alert.alert("Checkout failed", error?.message || "Please try again.");
@@ -278,164 +480,267 @@ export default function StoreScreen() {
         <Header />
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 126, paddingHorizontal: 16 }}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadProducts({ refreshing: true })} />}
+          contentContainerStyle={{ paddingBottom: 142, paddingHorizontal: 16 }}
         >
-          <View style={{ paddingTop: 20, paddingBottom: 24 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-              <View style={{ flex: 1, paddingRight: 16 }}>
-                <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, fontWeight: "800", marginBottom: 8 }}>
-                  Wellness Store
+          <View style={{ paddingTop: 18, paddingBottom: 16 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, fontWeight: "900", marginBottom: 8 }}>
+                  NUTRIMED PHARMACY
                 </Text>
-                <Text style={{ color: SCREEN_COLORS.text, fontSize: 28, fontWeight: "800", lineHeight: 34 }}>
-                  Shop nutrition essentials
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 28, fontWeight: "900", lineHeight: 34 }}>
+                  Medicines & wellness
+                </Text>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 20, marginTop: 8 }}>
+                  Shop admin-managed products with cart, checkout, and saved orders.
                 </Text>
               </View>
 
               <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => loadProducts()}
+                activeOpacity={0.86}
+                onPress={() => setCartVisible(true)}
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 16,
-                  backgroundColor: SCREEN_COLORS.iconBg,
+                  width: 54,
+                  height: 54,
+                  borderRadius: 8,
+                  backgroundColor: SCREEN_COLORS.primary,
                   alignItems: "center",
                   justifyContent: "center",
-                  borderWidth: 1,
-                  borderColor: SCREEN_COLORS.border,
                 }}
               >
-                <Ionicons name="refresh" size={24} color={SCREEN_COLORS.primary} />
+                <Ionicons name="cart" size={24} color="#fff" />
+                {cartCount ? (
+                  <View style={{ position: "absolute", top: -5, right: -5, backgroundColor: "#EF4444", borderRadius: 999, minWidth: 22, height: 22, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 }}>
+                    <Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>{cartCount}</Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             </View>
 
-            <View
-              style={{
-                backgroundColor: SCREEN_COLORS.card,
-                borderRadius: 18,
-                borderWidth: 1,
-                borderColor: SCREEN_COLORS.border,
-                padding: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <Ionicons name="shield-checkmark" size={22} color={SCREEN_COLORS.primary} />
-              <Text style={{ color: SCREEN_COLORS.textMuted, flex: 1, lineHeight: 20 }}>
-                Secure checkout, live inventory, and tracked delivery for every order.
+            <View style={{ marginTop: 18, backgroundColor: "#EAF7F1", borderRadius: 8, padding: 14, flexDirection: "row", gap: 12, alignItems: "center" }}>
+              <Ionicons name="shield-checkmark" size={22} color="#047857" />
+              <Text style={{ color: "#065F46", flex: 1, lineHeight: 20, fontWeight: "700" }}>
+                Genuine products, secure payment, backend order tracking.
               </Text>
             </View>
+
+            <View style={{ marginTop: 14, flexDirection: "row", gap: 10 }}>
+              <View style={{ flex: 1, height: 48, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, backgroundColor: SCREEN_COLORS.card, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 }}>
+                <Ionicons name="search" size={18} color={SCREEN_COLORS.textMuted} />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search medicines, vitamins..."
+                  placeholderTextColor={SCREEN_COLORS.textMuted}
+                  style={{ flex: 1, color: SCREEN_COLORS.text, fontSize: 14 }}
+                />
+              </View>
+              <TouchableOpacity
+                onPress={() => setOrdersVisible(true)}
+                style={{ width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, backgroundColor: SCREEN_COLORS.card, alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="receipt-outline" size={22} color={SCREEN_COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 14 }}>
+              {categories.map((category) => {
+                const isActive = category === selectedCategory;
+                return (
+                  <TouchableOpacity
+                    key={category}
+                    onPress={() => setSelectedCategory(category)}
+                    style={{
+                      borderRadius: 999,
+                      paddingHorizontal: 14,
+                      paddingVertical: 9,
+                      backgroundColor: isActive ? SCREEN_COLORS.primary : SCREEN_COLORS.card,
+                      borderWidth: 1,
+                      borderColor: isActive ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
+                    }}
+                  >
+                    <Text style={{ color: isActive ? "#fff" : SCREEN_COLORS.text, fontSize: 13, fontWeight: "800" }}>
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {isLoading ? (
-            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+            <View style={{ paddingVertical: 70, alignItems: "center" }}>
               <ActivityIndicator color={SCREEN_COLORS.primary} />
-              <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 12 }}>Loading products</Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 12 }}>Loading pharmacy</Text>
             </View>
           ) : message ? (
-            <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 16 }}>
+            <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 8 }}>
               <Text style={{ color: SCREEN_COLORS.text }}>{message}</Text>
             </View>
-          ) : products.length === 0 ? (
-            <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 16 }}>
-              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800", marginBottom: 6 }}>
-                No products yet
-              </Text>
-              <Text style={{ color: SCREEN_COLORS.textMuted }}>
-                Add products from the admin panel and they will appear here.
-              </Text>
+          ) : visibleProducts.length === 0 ? (
+            <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 8 }}>
+              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginBottom: 6 }}>No products found</Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted }}>Add matching products from the admin panel.</Text>
             </View>
           ) : (
-            products.map((product) => (
-              <ProductCard key={product._id} product={product} onBuyNow={openProductSheet} />
-            ))
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
+              {visibleProducts.map((product) => (
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  quantity={getCartQuantity(product._id)}
+                  onAdd={addToCart}
+                  onChangeQuantity={changeCartQuantity}
+                  onOpenDetails={setSelectedProduct}
+                />
+              ))}
+            </View>
           )}
         </ScrollView>
+
+        {cartCount ? (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setCartVisible(true)}
+            style={{
+              position: "absolute",
+              left: 16,
+              right: 16,
+              bottom: 86,
+              height: 54,
+              borderRadius: 8,
+              backgroundColor: SCREEN_COLORS.primary,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 16,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "900" }}>{cartCount} item{cartCount > 1 ? "s" : ""}</Text>
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>View cart · {formatPrice(payableTotal)}</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <AppBottomNav />
       </ScreenBackground>
 
-      <Modal visible={!!selectedProduct} animationType="slide" transparent onRequestClose={closeProductSheet}>
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(7, 45, 102, 0.24)" }}>
-          <Pressable style={{ flex: 1 }} onPress={closeProductSheet} />
-
+      <Modal visible={!!selectedProduct} animationType="fade" transparent onRequestClose={() => setSelectedProduct(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(3,17,31,0.45)", justifyContent: "flex-end" }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setSelectedProduct(null)} />
           {selectedProduct ? (
-            <SafeAreaView
-              style={{
-                backgroundColor: SCREEN_COLORS.background,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                overflow: "hidden",
-              }}
-              edges={["bottom"]}
-            >
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-                <Image
-                  source={{ uri: selectedProduct.image || FALLBACK_IMAGE }}
-                  style={{ width: "100%", height: 190 }}
-                  resizeMode="cover"
-                />
+            <View style={{ backgroundColor: SCREEN_COLORS.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: "84%" }}>
+              <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28 }}>
+                <Image source={{ uri: selectedProduct.image || FALLBACK_IMAGE }} style={{ width: "100%", height: 210, borderRadius: 8 }} resizeMode="cover" />
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 23, fontWeight: "900", marginTop: 16 }}>{selectedProduct.name}</Text>
+                <Text style={{ color: SCREEN_COLORS.primary, fontSize: 20, fontWeight: "900", marginTop: 6 }}>{formatPrice(selectedProduct.price)}</Text>
+                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 15, lineHeight: 22, marginTop: 12 }}>
+                  {selectedProduct.fullDescription || selectedProduct.shortDescription}
+                </Text>
+                {(selectedProduct.benefits || []).length ? (
+                  <View style={{ gap: 8, marginTop: 14 }}>
+                    {selectedProduct.benefits?.map((benefit) => (
+                      <View key={benefit} style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                        <Ionicons name="checkmark-circle" size={17} color="#16A34A" />
+                        <Text style={{ color: SCREEN_COLORS.text, flex: 1 }}>{benefit}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+                <TouchableOpacity
+                  disabled={Number(selectedProduct.stock ?? 0) <= 0}
+                  onPress={() => {
+                    addToCart(selectedProduct);
+                    setSelectedProduct(null);
+                  }}
+                  style={{
+                    height: 52,
+                    borderRadius: 8,
+                    backgroundColor: Number(selectedProduct.stock ?? 0) <= 0 ? "#94A3B8" : SCREEN_COLORS.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginTop: 18,
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>
+                    {Number(selectedProduct.stock ?? 0) <= 0 ? "Out of stock" : "Add to cart"}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
 
-                <View style={{ padding: 18 }}>
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 23, fontWeight: "800", marginBottom: 6 }}>
-                        {selectedProduct.name}
-                      </Text>
-                      <Text style={{ color: getSafeAccent(selectedProduct.accent), fontSize: 18, fontWeight: "800" }}>
-                        {formatPrice(selectedProduct.price)}
-                      </Text>
-                    </View>
+      <Modal visible={cartVisible} animationType="slide" transparent onRequestClose={() => setCartVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(3,17,31,0.42)", justifyContent: "flex-end" }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setCartVisible(false)} />
+          <SafeAreaView style={{ backgroundColor: SCREEN_COLORS.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: "90%" }} edges={["bottom"]}>
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "900" }}>Cart</Text>
+                <TouchableOpacity onPress={() => setCartVisible(false)}>
+                  <Ionicons name="close" size={24} color={SCREEN_COLORS.primaryDark} />
+                </TouchableOpacity>
+              </View>
 
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={closeProductSheet}
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 19,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: SCREEN_COLORS.iconBg,
-                      }}
-                    >
-                      <Ionicons name="close" size={20} color={SCREEN_COLORS.primaryDark} />
-                    </TouchableOpacity>
+              {!cartLines.length ? (
+                <View style={{ alignItems: "center", paddingVertical: 34 }}>
+                  <Ionicons name="cart-outline" size={34} color={SCREEN_COLORS.primary} />
+                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 10 }}>Your cart is empty</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={{ gap: 10 }}>
+                    {cartLines.map(({ item, product }) => (
+                      <View key={product._id} style={{ flexDirection: "row", gap: 12, backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 10 }}>
+                        <Image source={{ uri: product.image || FALLBACK_IMAGE }} style={{ width: 64, height: 64, borderRadius: 8 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900" }} numberOfLines={2}>{product.name}</Text>
+                          <Text style={{ color: SCREEN_COLORS.primary, fontWeight: "900", marginTop: 4 }}>{formatPrice(product.price * item.quantity)}</Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
+                            <TouchableOpacity onPress={() => changeCartQuantity(product, -1)}><Ionicons name="remove-circle-outline" size={24} color={SCREEN_COLORS.primary} /></TouchableOpacity>
+                            <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900" }}>{item.quantity}</Text>
+                            <TouchableOpacity onPress={() => changeCartQuantity(product, 1)}><Ionicons name="add-circle-outline" size={24} color={SCREEN_COLORS.primary} /></TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
                   </View>
 
-                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 15, lineHeight: 22, marginTop: 14, marginBottom: 16 }}>
-                    {selectedProduct.fullDescription || selectedProduct.shortDescription}
-                  </Text>
-
-                  <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 18, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 16 }}>
-                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "800", marginBottom: 12 }}>
-                      Quantity
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <TouchableOpacity onPress={() => changeQuantity(-1)} style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: SCREEN_COLORS.cardSoft }}>
-                          <Ionicons name="remove" size={18} color={SCREEN_COLORS.primaryDark} />
-                        </TouchableOpacity>
-                        <Text style={{ color: SCREEN_COLORS.text, fontSize: 18, fontWeight: "800", minWidth: 34, textAlign: "center" }}>
-                          {quantity}
+                  <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 14, marginTop: 14 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900", flex: 1 }}>Delivery address</Text>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        disabled={isLocating}
+                        onPress={() => void useCurrentLocation()}
+                        style={{
+                          minHeight: 36,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: SCREEN_COLORS.primary,
+                          paddingHorizontal: 10,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          opacity: isLocating ? 0.65 : 1,
+                        }}
+                      >
+                        {isLocating ? (
+                          <ActivityIndicator size="small" color={SCREEN_COLORS.primary} />
+                        ) : (
+                          <Ionicons name="locate" size={16} color={SCREEN_COLORS.primary} />
+                        )}
+                        <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, fontWeight: "900" }}>
+                          {isLocating ? "Fetching" : "Use location"}
                         </Text>
-                        <TouchableOpacity onPress={() => changeQuantity(1)} style={{ width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: getSafeAccent(selectedProduct.accent) }}>
-                          <Ionicons name="add" size={18} color="#03111F" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "800" }}>
-                        {formatPrice(totalPrice)}
-                      </Text>
+                      </TouchableOpacity>
                     </View>
-
-                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "800", marginBottom: 10 }}>
-                      Delivery
-                    </Text>
                     {[
                       ["name", "Full name"],
                       ["phone", "Phone"],
-                      ["line1", "Address"],
+                      ["line1", "House / street address"],
                       ["city", "City"],
                       ["state", "State"],
                       ["postalCode", "PIN code"],
@@ -445,45 +750,78 @@ export default function StoreScreen() {
                         value={address[key as keyof ShippingAddress]}
                         onChangeText={(value) => updateAddress(key as keyof ShippingAddress, value)}
                         placeholder={placeholder}
-                        placeholderTextColor="#94A3B8"
-                        style={{
-                          minHeight: 44,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: SCREEN_COLORS.border,
-                          color: SCREEN_COLORS.text,
-                          paddingHorizontal: 12,
-                          marginBottom: 10,
-                          backgroundColor: SCREEN_COLORS.background,
-                        }}
+                        placeholderTextColor={SCREEN_COLORS.textMuted}
+                        style={{ minHeight: 44, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, color: SCREEN_COLORS.text, paddingHorizontal: 12, marginBottom: 9, backgroundColor: SCREEN_COLORS.background }}
                       />
                     ))}
-
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={isCheckingOut}
-                      onPress={checkout}
-                      style={{
-                        height: 54,
-                        borderRadius: 16,
-                        backgroundColor: getSafeAccent(selectedProduct.accent),
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexDirection: "row",
-                        gap: 8,
-                        opacity: isCheckingOut ? 0.7 : 1,
-                      }}
-                    >
-                      {isCheckingOut ? <ActivityIndicator color="#03111F" /> : <Ionicons name="card" size={18} color="#03111F" />}
-                      <Text style={{ color: "#03111F", fontSize: 16, fontWeight: "800" }}>
-                        Pay with Razorpay
-                      </Text>
-                    </TouchableOpacity>
                   </View>
+
+                  <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 14, marginTop: 14, gap: 8 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <Text style={{ color: SCREEN_COLORS.textMuted }}>Subtotal</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800" }}>{formatPrice(subtotal)}</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <Text style={{ color: SCREEN_COLORS.textMuted }}>Delivery</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800" }}>{shippingFee ? formatPrice(shippingFee) : "Free"}</Text>
+                    </View>
+                    <View style={{ height: 1, backgroundColor: SCREEN_COLORS.border, marginVertical: 4 }} />
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}>Total</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}>{formatPrice(payableTotal)}</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    disabled={isCheckingOut}
+                    onPress={() => void checkout()}
+                    style={{ height: 54, borderRadius: 8, backgroundColor: SCREEN_COLORS.primary, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: 14, opacity: isCheckingOut ? 0.65 : 1 }}
+                  >
+                    {isCheckingOut ? <ActivityIndicator color="#fff" /> : <Ionicons name="card" size={19} color="#fff" />}
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>Checkout</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      <Modal visible={ordersVisible} animationType="slide" transparent onRequestClose={() => setOrdersVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(3,17,31,0.42)", justifyContent: "flex-end" }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setOrdersVisible(false)} />
+          <SafeAreaView style={{ backgroundColor: SCREEN_COLORS.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: "78%" }} edges={["bottom"]}>
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "900" }}>Orders</Text>
+                <TouchableOpacity onPress={() => setOrdersVisible(false)}><Ionicons name="close" size={24} color={SCREEN_COLORS.primaryDark} /></TouchableOpacity>
+              </View>
+              {orders.length ? (
+                <View style={{ gap: 10 }}>
+                  {orders.map((order) => (
+                    <View key={order._id} style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 12 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
+                        <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900" }}>{order.orderNumber}</Text>
+                        <Text style={{ color: SCREEN_COLORS.primary, fontWeight: "900" }}>{order.status}</Text>
+                      </View>
+                      <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 5 }}>{new Date(order.createdAt).toLocaleString()}</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 8 }}>{formatPrice(order.total)}</Text>
+                      {(order.items || []).map((item) => (
+                        <Text key={`${order._id}-${item.name}`} style={{ color: SCREEN_COLORS.textMuted, marginTop: 4 }}>
+                          {item.name} x {item.quantity}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
                 </View>
-              </ScrollView>
-            </SafeAreaView>
-          ) : null}
+              ) : (
+                <View style={{ alignItems: "center", paddingVertical: 34 }}>
+                  <Ionicons name="receipt-outline" size={34} color={SCREEN_COLORS.primary} />
+                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 10 }}>No orders yet</Text>
+                </View>
+              )}
+            </ScrollView>
+          </SafeAreaView>
         </View>
       </Modal>
     </SafeAreaView>
