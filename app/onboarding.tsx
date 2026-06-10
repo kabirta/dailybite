@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SignInSheet from "../components/SignInSheet";
 import { signInWithGoogle } from "../src/services/authService";
 import { loginWithFirebaseUser } from "../src/services/backendApi";
+import { Ionicons } from "@expo/vector-icons";
 
 type GoalDirection = "lose_weight" | "maintain_weight" | "gain_weight" | "work_that_out";
 type MainGoalOption =
@@ -421,7 +422,11 @@ export default function OnboardingScreen() {
     }
 
     if (stepIndex === 0) {
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/");
+      }
       return;
     }
 
@@ -990,13 +995,12 @@ export default function OnboardingScreen() {
         <View className="px-5 pb-3 pt-2">
           <View className="flex-row items-center gap-3">
             <Pressable
+              hitSlop={12}
               className="h-11 w-11 items-center justify-center rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.72)" }}
               onPress={goBack}
             >
-              <Text className="text-[26px] font-semibold" style={{ color: "#45729E" }}>
-                {"<"}
-              </Text>
+              <Ionicons name="chevron-back" size={25} color="#45729E" />
             </Pressable>
 
             <View className="flex-1 flex-row items-center gap-1.5">
