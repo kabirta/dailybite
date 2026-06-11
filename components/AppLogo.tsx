@@ -16,7 +16,7 @@ export default function AppLogo() {
           }}
         />
       </View>
-      <Text className="mt-7 text-5xl font-light tracking-wide text-white">NutriMed AI</Text>
+      <Text className="mt-7 text-5xl font-light tracking-wide text-white">NutriMed</Text>
       <Text className="mt-2 text-xl tracking-[1px] text-white/80">by CMC</Text>
     </View>
   );

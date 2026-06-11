@@ -72,7 +72,7 @@ const SEARCH_ITEMS: SearchItem[] = [
   {
     id: "store",
     title: "Store",
-    subtitle: "Browse NutriMed AI by CMC nutrition products",
+    subtitle: "Browse NutriMed by CMC nutrition products",
     category: "App",
     icon: "storefront-outline",
     tint: "#F97316",
@@ -269,7 +269,7 @@ export default function SearchScreen() {
               ref={inputRef}
               value={query}
               onChangeText={setQuery}
-              placeholder="Search NutriMed AI by CMC"
+              placeholder="Search NutriMed by CMC"
               placeholderTextColor={SCREEN_COLORS.textMuted}
               returnKeyType="search"
               style={styles.searchInput}

@@ -55,7 +55,7 @@ export default function PrivacyPolicyScreen({
           </Text>
 
           <Text className="mt-5 text-[17px] leading-8 text-[#072d66]">
-            NutriMed AI by CMC&apos;s mission is to help you reach your nutrition goals by providing tools
+            NutriMed by CMC&apos;s mission is to help you reach your nutrition goals by providing tools
             and support to get there. To enable this, we have updated our privacy policy. We want
             to let you know these changes to ensure we are transparent about how we intend to use
             the data you provide to us.

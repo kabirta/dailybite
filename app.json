@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NutriMed AI by CMC",
-    "slug": "nutrimed-ai-by-cmc",
+    "name": "NutriMed by CMC",
+    "slug": "nutrimed-by-cmc",
     "scheme": "com.nutrimed.ai",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -35,14 +35,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow NutriMed AI by CMC to access your photos to set a profile picture.",
-          "cameraPermission": "Allow NutriMed AI by CMC to use your camera to take a profile photo."
+          "photosPermission": "Allow NutriMed by CMC to access your photos to set a profile picture.",
+          "cameraPermission": "Allow NutriMed by CMC to use your camera to take a profile photo."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow NutriMed AI by CMC to use your location to auto-fill your delivery address."
+          "locationWhenInUsePermission": "Allow NutriMed by CMC to use your location to auto-fill your delivery address."
         }
       ],
       "expo-web-browser",

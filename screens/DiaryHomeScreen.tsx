@@ -431,7 +431,7 @@ export default function DiaryHomeScreen() {
 
   const shareSummary = async () => {
     const message = [
-      `DailyBite summary for ${selectedDateIso}`,
+      `NutriMed by CMC summary for ${selectedDateIso}`,
       `${consumed} kcal consumed, ${burned} kcal burned, ${remaining} kcal remaining.`,
       `Water: ${Math.round(water.totalMl ?? 0)} ml. Sleep: ${formatMinutes(sleep.totalMinutes)}. Exercise: ${formatMinutes(exercise.totalMinutes)}.`,
       report?.insightText ?? "",

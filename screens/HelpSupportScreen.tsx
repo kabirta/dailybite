@@ -51,9 +51,9 @@ const FAQS = [
       "Daily targets are estimates based on your profile, goals, and activity. Keep your meal diary and profile information current for better guidance.",
   },
   {
-    question: "Can I use NutriMed AI by CMC for medical advice?",
+    question: "Can I use NutriMed by CMC for medical advice?",
     answer:
-      "NutriMed AI by CMC can support healthy habits, but it does not replace a doctor, dietitian, or emergency care.",
+      "NutriMed by CMC can support healthy habits, but it does not replace a doctor, dietitian, or emergency care.",
   },
 ] as const;
 
@@ -130,7 +130,7 @@ export default function HelpSupportScreen() {
 
   const openSupportEmail = () => {
     void Linking.openURL(
-      `mailto:${SUPPORT_EMAIL}?subject=NutriMed%20AI%20by%20CMC%20support%20request`,
+      `mailto:${SUPPORT_EMAIL}?subject=NutriMed%20by%20CMC%20support%20request`,
     );
   };
 

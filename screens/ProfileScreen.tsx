@@ -767,7 +767,7 @@ export default function ProfileScreen() {
             )}
           </Pressable>
 
-          <Text style={styles.versionText}>NutriMed AI by CMC v1.0.0</Text>
+          <Text style={styles.versionText}>NutriMed by CMC v1.0.0</Text>
         </ScrollView>
       </ScreenBackground>
     </SafeAreaView>
