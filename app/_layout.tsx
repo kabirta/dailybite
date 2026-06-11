@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NutritionProvider } from "../src/context/NutritionContext";
+import { LanguageProvider } from "../src/i18n/LanguageContext";
+import { setupHourlyWaterReminderPush } from "../src/services/waterReminderPushService";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -36,16 +38,22 @@ export default function RootLayout() {
     void requestNotificationsPermission();
   }, []);
 
+  useEffect(() => {
+    void setupHourlyWaterReminderPush();
+  }, []);
+
   return (
     <SafeAreaProvider>
-      <NutritionProvider>
-        <StatusBar style="auto" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        />
-      </NutritionProvider>
+      <LanguageProvider>
+        <NutritionProvider>
+          <StatusBar style="auto" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          />
+        </NutritionProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

@@ -23,6 +23,7 @@ import { InfoCard } from "../components/InfoCard";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
 import { SummaryGrid, PixelGrid } from "../components/SummaryGrid";
 import { useNutrition } from "../src/context/NutritionContext";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -96,12 +97,13 @@ function buildLogTime(date: Date) {
 }
 
 function ProgressLine({ label, value, target, color }: { label: string; value: number; target: number; color: string }) {
+  const { t } = useLanguage();
   const progress = Math.min(value / Math.max(target, 1), 1);
 
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, fontWeight: "600" }}>{label}</Text>
+        <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, fontWeight: "600" }}>{t(label)}</Text>
         <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>
           {Math.round(value).toLocaleString()} / {Math.round(target).toLocaleString()}
         </Text>
@@ -128,6 +130,8 @@ function MetricCard({
   children?: React.ReactNode;
   flush?: boolean;
 }) {
+  const { t } = useLanguage();
+
   return (
     <View
       style={{
@@ -155,8 +159,8 @@ function MetricCard({
           <Ionicons name={iconName} size={22} color={iconColor} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 15 }}>{title}</Text>
-          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 2 }}>{subtitle}</Text>
+          <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 15 }}>{t(title)}</Text>
+          <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginTop: 2 }}>{t(subtitle)}</Text>
         </View>
       </View>
       {children}
@@ -165,6 +169,8 @@ function MetricCard({
 }
 
 function QuickButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const { t } = useLanguage();
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -182,7 +188,7 @@ function QuickButton({ label, onPress, disabled = false }: { label: string; onPr
         opacity: disabled ? 0.6 : 1,
       }}
     >
-      <Text style={{ color: SCREEN_COLORS.primary, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+      <Text style={{ color: SCREEN_COLORS.primary, fontSize: 13, fontWeight: "700" }}>{t(label)}</Text>
     </TouchableOpacity>
   );
 }
@@ -230,6 +236,7 @@ function parsePositiveNumber(value: string) {
 export default function DiaryHomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ date?: string }>();
+  const { t } = useLanguage();
   const {
     addExercise,
     addSleep,
@@ -297,7 +304,7 @@ export default function DiaryHomeScreen() {
 
   const handleWater = async (amountMl: number) => {
     if (!Number.isFinite(amountMl) || amountMl <= 0) {
-      Alert.alert("Water amount", "Enter a valid water amount.");
+      Alert.alert(t("Water amount"), t("Enter a valid water amount."));
       return;
     }
 
@@ -306,7 +313,7 @@ export default function DiaryHomeScreen() {
       await addWater({ amountMl, loggedAt: buildLogTime(selectedDateForCalendar) }, selectedDateForCalendar);
       setCustomWaterMl("");
     } catch (error) {
-      Alert.alert("Water log failed", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(t("Water log failed"), error instanceof Error ? error.message : t("Please try again."));
     } finally {
       setSavingMetric("");
     }
@@ -315,7 +322,7 @@ export default function DiaryHomeScreen() {
   const handleWeight = async () => {
     const weightValue = parsePositiveNumber(weightKg);
     if (!weightValue) {
-      Alert.alert("Weight", "Enter a valid weight in kg.");
+      Alert.alert(t("Weight"), t("Enter a valid weight in kg."));
       return;
     }
 
@@ -324,7 +331,7 @@ export default function DiaryHomeScreen() {
       await addWeight({ weight: weightValue, loggedAt: buildLogTime(selectedDateForCalendar) }, selectedDateForCalendar);
       setWeightKg("");
     } catch (error) {
-      Alert.alert("Weight log failed", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(t("Weight log failed"), error instanceof Error ? error.message : t("Please try again."));
     } finally {
       setSavingMetric("");
     }
@@ -333,7 +340,7 @@ export default function DiaryHomeScreen() {
   const handleExercise = async () => {
     const minutes = parsePositiveNumber(exerciseMinutes);
     if (!minutes) {
-      Alert.alert("Exercise", "Enter exercise duration in minutes.");
+      Alert.alert(t("Exercise"), t("Enter exercise duration in minutes."));
       return;
     }
 
@@ -351,7 +358,7 @@ export default function DiaryHomeScreen() {
       );
       setExerciseMinutes("30");
     } catch (error) {
-      Alert.alert("Exercise log failed", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(t("Exercise log failed"), error instanceof Error ? error.message : t("Please try again."));
     } finally {
       setSavingMetric("");
     }
@@ -360,7 +367,7 @@ export default function DiaryHomeScreen() {
   const handleSleep = async () => {
     const hours = parsePositiveNumber(sleepHours);
     if (!hours) {
-      Alert.alert("Sleep", "Enter sleep hours.");
+      Alert.alert(t("Sleep"), t("Enter sleep hours."));
       return;
     }
 
@@ -377,7 +384,7 @@ export default function DiaryHomeScreen() {
       );
       setSleepHours("8");
     } catch (error) {
-      Alert.alert("Sleep log failed", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(t("Sleep log failed"), error instanceof Error ? error.message : t("Please try again."));
     } finally {
       setSavingMetric("");
     }
@@ -391,15 +398,15 @@ export default function DiaryHomeScreen() {
       try {
         await editMeal(entryId, { quantity }, selectedDateForCalendar);
       } catch (error) {
-        Alert.alert("Could not edit meal", error instanceof Error ? error.message : "Please try again.");
+        Alert.alert(t("Could not edit meal"), error instanceof Error ? error.message : t("Please try again."));
       }
     };
 
-    Alert.alert("Edit meal", entry?.food?.name ?? "Meal entry", [
+    Alert.alert(t("Edit meal"), entry?.food?.name ?? t("Meal entry"), [
       { text: "0.5x", onPress: () => void editQuantity(0.5) },
       { text: "1x", onPress: () => void editQuantity(1) },
       { text: "2x", onPress: () => void editQuantity(2) },
-      { text: "Cancel", style: "cancel" },
+      { text: t("Cancel"), style: "cancel" },
     ]);
   };
 
@@ -407,14 +414,14 @@ export default function DiaryHomeScreen() {
     const entryId = String(entry?.id ?? "");
     if (!entryId) return;
 
-    Alert.alert("Delete meal", `Remove ${entry?.food?.name ?? "this item"} from the diary?`, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("Delete meal"), `${t("Remove")} ${entry?.food?.name ?? t("this item")} ${t("from the diary?")}`, [
+      { text: t("Cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("Delete"),
         style: "destructive",
         onPress: () => {
           void removeMeal(entryId, selectedDateForCalendar).catch((error) => {
-            Alert.alert("Could not delete meal", error instanceof Error ? error.message : "Please try again.");
+            Alert.alert(t("Could not delete meal"), error instanceof Error ? error.message : t("Please try again."));
           });
         },
       },
@@ -425,7 +432,7 @@ export default function DiaryHomeScreen() {
     try {
       await undoDeleteMeal(selectedDateForCalendar);
     } catch (error) {
-      Alert.alert("Undo failed", error instanceof Error ? error.message : "Please try again.");
+      Alert.alert(t("Undo failed"), error instanceof Error ? error.message : t("Please try again."));
     }
   };
 
@@ -541,7 +548,7 @@ export default function DiaryHomeScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>Undo Delete</Text>
+                <Text style={{ color: "#fff", fontWeight: "700" }}>{t("Undo Delete")}</Text>
               </TouchableOpacity>
             </MetricCard>
           ) : null}
@@ -562,7 +569,7 @@ export default function DiaryHomeScreen() {
               <InlineInput
                 value={customWaterMl}
                 onChangeText={setCustomWaterMl}
-                placeholder="Custom ml"
+                placeholder={t("Custom ml")}
                 editable={savingMetric !== "water"}
               />
               <TouchableOpacity
@@ -584,7 +591,7 @@ export default function DiaryHomeScreen() {
                 {savingMetric === "water" ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Add</Text>
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{t("Add")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -609,11 +616,11 @@ export default function DiaryHomeScreen() {
                   <InlineInput
                     value={sleepHours}
                     onChangeText={setSleepHours}
-                    placeholder="Hours"
+                    placeholder={t("Hours")}
                     editable={savingMetric !== "sleep"}
                   />
                   <QuickButton
-                    label={savingMetric === "sleep" ? "..." : "Log"}
+                    label={savingMetric === "sleep" ? "..." : t("Log")}
                     disabled={savingMetric === "sleep"}
                     onPress={() => void handleSleep()}
                   />
@@ -638,11 +645,11 @@ export default function DiaryHomeScreen() {
                   <InlineInput
                     value={exerciseMinutes}
                     onChangeText={setExerciseMinutes}
-                    placeholder="Min"
+                    placeholder={t("Min")}
                     editable={savingMetric !== "exercise"}
                   />
                   <QuickButton
-                    label={savingMetric === "exercise" ? "..." : "Log"}
+                    label={savingMetric === "exercise" ? "..." : t("Log")}
                     disabled={savingMetric === "exercise"}
                     onPress={() => void handleExercise()}
                   />
@@ -656,7 +663,7 @@ export default function DiaryHomeScreen() {
             subtitle={
               weight.current
                 ? `${Number(weight.current).toFixed(1)} kg now, BMI ${weight.bmi ?? "-"}`
-                : "Add your first weight log"
+                : t("Add your first weight log")
             }
             iconName="scale-outline"
             iconColor="#F97316"
@@ -665,7 +672,7 @@ export default function DiaryHomeScreen() {
               <InlineInput
                 value={weightKg}
                 onChangeText={setWeightKg}
-                placeholder="Weight kg"
+                placeholder={t("Weight kg")}
                 editable={savingMetric !== "weight"}
               />
               <TouchableOpacity
@@ -684,7 +691,7 @@ export default function DiaryHomeScreen() {
                 {savingMetric === "weight" ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>Save</Text>
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{t("Save")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -724,14 +731,14 @@ export default function DiaryHomeScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 16 }}>Daily Summary</Text>
+              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 16 }}>{t("Daily Summary")}</Text>
               <TouchableOpacity onPress={shareSummary} activeOpacity={0.75}>
                 <Ionicons name="share-outline" size={21} color={SCREEN_COLORS.primary} />
               </TouchableOpacity>
             </View>
 
             <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, lineHeight: 19 }}>
-              {report?.insightText ?? "Start with one quick log today to build momentum."}
+              {report?.insightText ?? t("Start with one quick log today to build momentum.")}
             </Text>
 
             {(report?.recommendations ?? []).map((item: string) => (
@@ -744,16 +751,16 @@ export default function DiaryHomeScreen() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <View style={{ gap: 10 }}>
                 <View>
-                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>Calories Remaining</Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>{t("Calories Remaining")}</Text>
                   <Text style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}>{remaining.toLocaleString()}</Text>
                 </View>
                 <View>
-                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>Goal</Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>{t("Goal")}</Text>
                   <Text style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}>{goal.toLocaleString()}</Text>
                 </View>
                 <View>
-                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>Streak</Text>
-                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}>{bestStreak} days</Text>
+                  <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>{t("Streak")}</Text>
+                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}>{bestStreak} {t("days")}</Text>
                 </View>
               </View>
 

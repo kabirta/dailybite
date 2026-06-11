@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SCREEN_COLORS } from "./ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -43,6 +44,7 @@ export function MealSection({
   onEditEntry,
   onDeleteEntry,
 }: MealSectionProps) {
+  const { t } = useLanguage();
   const hasFoods = foods.length > 0;
 
   return (
@@ -73,7 +75,7 @@ export function MealSection({
             <Text
               style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 15 }}
             >
-              {title}
+              {t(title)}
             </Text>
             {caloriesLogged !== undefined && (
               <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 11, marginTop: 1 }}>
@@ -112,7 +114,7 @@ export function MealSection({
       {hasFoods && (
         <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: SCREEN_COLORS.border }}>
           <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 13, marginTop: 12, marginBottom: 8 }}>
-            {foods.length} {foods.length === 1 ? "item" : "items"}
+            {foods.length} {foods.length === 1 ? t("item") : t("items")}
           </Text>
           {foods.map((entry) => {
             const servingSize = entry.consumedServing?.size ?? entry.food?.servingSize ?? 1;
@@ -130,7 +132,7 @@ export function MealSection({
               >
                 <View style={{ flex: 1, paddingRight: 8 }}>
                   <Text style={{ color: SCREEN_COLORS.text, fontSize: 14, fontWeight: "500" }}>
-                    {entry.food?.name ?? "Food"}
+                    {entry.food?.name ?? t("Food")}
                   </Text>
                   <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, marginTop: 2 }}>
                     {entry.quantity ?? 1} x {servingSize} {servingUnit}

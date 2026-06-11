@@ -2,8 +2,10 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SCREEN_COLORS } from "./ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+const DAYS_BN = ["সো", "ম", "বু", "বৃ", "শু", "শ", "র"] as const;
 
 interface DaySelectorProps {
   currentDayIndex?: number;
@@ -18,10 +20,13 @@ export function DaySelector({
   onDayPress,
   onInfoPress,
 }: DaySelectorProps) {
+  const { language, t } = useLanguage();
+  const days = language === "bn" ? DAYS_BN : DAYS;
+
   return (
     <View className="px-4 pb-3">
       <Text style={{ color: SCREEN_COLORS.text, fontWeight: "700", fontSize: 22, marginBottom: 16 }}>
-        Today
+        {t("Today")}
       </Text>
 
       {/* Day circles */}
@@ -32,7 +37,7 @@ export function DaySelector({
           marginBottom: 14,
         }}
       >
-        {DAYS.map((day, index) => {
+        {days.map((day, index) => {
           const isActive = index === currentDayIndex;
           return (
             <TouchableOpacity
@@ -70,7 +75,7 @@ export function DaySelector({
         <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>{streakCount} </Text>
         <Ionicons name="flame" size={13} color={SCREEN_COLORS.textMuted} />
         <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginLeft: 4 }}>
-          Log food to start a streak
+          {t("Log food to start a streak")}
         </Text>
         <TouchableOpacity
           onPress={onInfoPress}

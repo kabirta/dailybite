@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SCREEN_COLORS } from "./ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 const GRID_ROWS = 8;
 const GRID_COLS = 8;
@@ -74,6 +75,7 @@ export function SummaryGrid({
   isCollapsed = false,
   onToggleCollapse,
 }: SummaryGridProps) {
+  const { t } = useLanguage();
   const filledCells = Math.round(
     Math.min((consumed / Math.max(goal, 1)) * TOTAL_CELLS, TOTAL_CELLS)
   );
@@ -101,7 +103,7 @@ export function SummaryGrid({
             textTransform: "uppercase",
           }}
         >
-          {isCollapsed ? "Expand" : "Collapse"}
+          {isCollapsed ? t("Expand") : t("Collapse")}
         </Text>
         <Ionicons
           name={isCollapsed ? "chevron-down" : "chevron-up"}
@@ -125,7 +127,7 @@ export function SummaryGrid({
         <View style={{ gap: 10 }}>
           <View>
             <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 1 }}>
-              Calories Remaining
+              {t("Calories Remaining")}
             </Text>
             <Text
               style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
@@ -135,7 +137,7 @@ export function SummaryGrid({
           </View>
           <View>
             <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12, marginBottom: 1 }}>
-              Calories Consumed
+              {t("Calories Consumed")}
             </Text>
             <Text
               style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 16 }}
@@ -173,7 +175,7 @@ export function SummaryGrid({
               <View key={item.key} style={{ gap: 5 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                   <Text style={{ color: SCREEN_COLORS.text, fontSize: 12, fontWeight: "600" }}>
-                    {item.label}
+                    {t(item.label)}
                   </Text>
                   <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>
                     {total}g / {target || "-"}g

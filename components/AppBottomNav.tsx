@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { SCREEN_COLORS } from './ScreenBackground';
+import { useLanguage } from '../src/i18n/LanguageContext';
 
 interface BottomTabItem {
   key: "community" | "diary" | "reports" | "store" | "doctor";
@@ -62,7 +63,7 @@ const BOTTOM_TABS: BottomTabItem[] = [
 function getActiveTabKey(pathname: string): BottomTabItem["key"] {
   if (pathname === "/chat") return "community";
   if (pathname === "/doctor-appointment" || pathname === "/my-appointments") return "doctor";
-  if (pathname === "/store") return "store";
+  if (pathname === "/store" || pathname === "/store-orders") return "store";
   if (pathname === "/reports") return "reports";
   return "diary";
 }
@@ -71,6 +72,7 @@ export function AppBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const activeTabKey = getActiveTabKey(pathname);
 
   return (
@@ -120,7 +122,7 @@ export function AppBottomNav() {
               }}
               numberOfLines={1}
             >
-              {tab.label}
+              {t(tab.label)}
             </Text>
           </TouchableOpacity>
         );

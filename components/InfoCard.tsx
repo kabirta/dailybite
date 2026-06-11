@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SCREEN_COLORS } from "./ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -22,6 +23,7 @@ export function InfoCard({
   onClose,
   onPress,
 }: InfoCardProps) {
+  const { t } = useLanguage();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -46,7 +48,7 @@ export function InfoCard({
       <View style={{ flex: 1, marginHorizontal: 12, gap: 3 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text style={{ color: SCREEN_COLORS.text, fontWeight: "600", fontSize: 15 }}>
-            {title}
+            {t(title)}
           </Text>
           {/* Info badge */}
           <View
@@ -66,7 +68,7 @@ export function InfoCard({
             </Text>
           </View>
         </View>
-        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>{subtitle}</Text>
+        <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 12 }}>{t(subtitle)}</Text>
       </View>
 
       {/* Close button */}

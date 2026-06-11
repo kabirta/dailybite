@@ -495,6 +495,17 @@ export async function getMyProfile() {
   return authenticatedRequest("/users/me");
 }
 
+export async function getMyProfileStats() {
+  return authenticatedRequest("/users/me/stats");
+}
+
+export async function registerFcmPushToken({ token, platform }) {
+  return authenticatedRequest("/push/tokens", {
+    method: "POST",
+    body: JSON.stringify({ token, platform }),
+  });
+}
+
 export async function getPremiumStatus() {
   return authenticatedRequest("/premium/status");
 }
@@ -715,10 +726,10 @@ export async function listStoreProducts({ query = "", category = "" } = {}) {
   return apiRequest(`/store/products${queryString}`);
 }
 
-export async function createStoreOrder({ items, shippingAddress = {}, notes = "" }) {
+export async function createStoreOrder({ items, shippingAddress = {}, notes = "", paymentMethod = "razorpay" }) {
   return authenticatedRequest("/store/orders", {
     method: "POST",
-    body: JSON.stringify({ items, shippingAddress, notes }),
+    body: JSON.stringify({ items, shippingAddress, notes, paymentMethod }),
   });
 }
 

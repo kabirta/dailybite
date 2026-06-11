@@ -16,6 +16,7 @@ import {
   SCREEN_COLORS,
   ScreenBackground,
 } from "../components/ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 type SearchItem = {
   id: string;
@@ -216,6 +217,7 @@ function groupItems(items: SearchItem[]) {
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const inputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState("");
 
@@ -246,7 +248,7 @@ export default function SearchScreen() {
         <View style={styles.topBar}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("Go back")}
             onPress={() => router.back()}
             style={({ pressed }) => [
               styles.iconButton,
@@ -269,7 +271,7 @@ export default function SearchScreen() {
               ref={inputRef}
               value={query}
               onChangeText={setQuery}
-              placeholder="Search NutriMed by CMC"
+              placeholder={t("Search NutriMed by CMC")}
               placeholderTextColor={SCREEN_COLORS.textMuted}
               returnKeyType="search"
               style={styles.searchInput}
@@ -299,19 +301,19 @@ export default function SearchScreen() {
                 onPress={() => setQuery(suggestion)}
                 style={styles.suggestionPill}
               >
-                <Text style={styles.suggestionText}>{suggestion}</Text>
+                <Text style={styles.suggestionText}>{t(suggestion)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <Text style={styles.resultCount}>
-            {results.length} result{results.length === 1 ? "" : "s"}
+            {results.length} {results.length === 1 ? t("result") : t("results")}
           </Text>
 
           {categories.length > 0 ? (
             categories.map((category) => (
               <View key={category} style={styles.section}>
-                <Text style={styles.sectionTitle}>{category}</Text>
+                <Text style={styles.sectionTitle}>{t(category)}</Text>
                 <View style={styles.resultCard}>
                   {groupedResults[category].map((item) => (
                     <TouchableOpacity
@@ -329,8 +331,8 @@ export default function SearchScreen() {
                         <Ionicons name={item.icon} size={20} color={item.tint} />
                       </View>
                       <View style={styles.resultCopy}>
-                        <Text style={styles.resultTitle}>{item.title}</Text>
-                        <Text style={styles.resultSubtitle}>{item.subtitle}</Text>
+                        <Text style={styles.resultTitle}>{t(item.title)}</Text>
+                        <Text style={styles.resultSubtitle}>{t(item.subtitle)}</Text>
                       </View>
                       <Ionicons
                         name="chevron-forward"
@@ -351,10 +353,9 @@ export default function SearchScreen() {
                   color={SCREEN_COLORS.primary}
                 />
               </View>
-              <Text style={styles.emptyTitle}>No results found</Text>
+              <Text style={styles.emptyTitle}>{t("No results found")}</Text>
               <Text style={styles.emptyText}>
-                Try searching for meals, calories, reports, products, profile,
-                or support.
+                {t("Try searching for meals, calories, reports, products, profile, or support.")}
               </Text>
             </View>
           )}

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,9 +20,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 import {
   createStoreOrder,
-  listMyStoreOrders,
   listStoreProducts,
   verifyStorePayment,
 } from "../src/services/backendApi";
@@ -57,14 +58,7 @@ type ShippingAddress = {
   postalCode: string;
 };
 
-type StoreOrder = {
-  _id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  createdAt: string;
-  items?: { name: string; quantity: number; lineTotal?: number }[];
-};
+type PaymentMethod = "razorpay" | "cod";
 
 const CART_STORAGE_KEY = "nutrimed.store.cart";
 const FALLBACK_IMAGE =
@@ -124,6 +118,7 @@ function ProductCard({
   onChangeQuantity: (product: Product, delta: number) => void;
   onOpenDetails: (product: Product) => void;
 }) {
+  const { t } = useLanguage();
   const accent = getSafeAccent(product.accent);
   const inStock = Number(product.stock ?? 0) > 0;
   const discount =
@@ -163,7 +158,7 @@ function ProductCard({
               paddingVertical: 3,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>{discount}% off</Text>
+            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>{discount}% {t("off")}</Text>
           </View>
         ) : null}
       </View>
@@ -192,7 +187,7 @@ function ProductCard({
 
         {!inStock ? (
           <View style={{ height: 38, borderRadius: 8, backgroundColor: "#E2E8F0", alignItems: "center", justifyContent: "center", marginTop: 10 }}>
-            <Text style={{ color: "#64748B", fontWeight: "900" }}>Out of stock</Text>
+            <Text style={{ color: "#64748B", fontWeight: "900" }}>{t("Out of stock")}</Text>
           </View>
         ) : quantity > 0 ? (
           <View style={{ height: 38, borderRadius: 8, borderWidth: 1, borderColor: accent, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
@@ -210,7 +205,7 @@ function ProductCard({
             onPress={() => onAdd(product)}
             style={{ height: 38, borderRadius: 8, borderWidth: 1, borderColor: accent, alignItems: "center", justifyContent: "center", marginTop: 10 }}
           >
-            <Text style={{ color: accent, fontSize: 14, fontWeight: "900" }}>Add</Text>
+            <Text style={{ color: accent, fontSize: 14, fontWeight: "900" }}>{t("Add")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -219,19 +214,20 @@ function ProductCard({
 }
 
 export default function StoreScreen() {
+  const router = useRouter();
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<StoreOrder[]>([]);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cartVisible, setCartVisible] = useState(false);
-  const [ordersVisible, setOrdersVisible] = useState(false);
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [message, setMessage] = useState("");
 
   const productMap = useMemo(() => new Map(products.map((product) => [product._id, product])), [products]);
@@ -282,12 +278,8 @@ export default function StoreScreen() {
     setMessage("");
 
     try {
-      const [productData, orderData] = await Promise.all([
-        listStoreProducts(),
-        listMyStoreOrders().catch(() => []),
-      ]);
+      const productData = await listStoreProducts();
       setProducts(Array.isArray(productData) ? productData : []);
-      setOrders(Array.isArray(orderData) ? orderData : []);
     } catch (error: any) {
       setMessage(error?.message || "Could not load pharmacy products.");
     } finally {
@@ -356,15 +348,15 @@ export default function StoreScreen() {
       const Location = getExpoLocation();
       if (!Location) {
         Alert.alert(
-          "Location update needed",
-          "Please install the latest app build to use automatic address detection."
+          t("Location update needed"),
+          t("Please install the latest app build to use automatic address detection.")
         );
         return;
       }
 
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
-        Alert.alert("Location permission needed", "Allow location access to auto-fill your delivery address.");
+        Alert.alert(t("Location permission needed"), t("Allow location access to auto-fill your delivery address."));
         return;
       }
 
@@ -377,7 +369,7 @@ export default function StoreScreen() {
       });
 
       if (!place) {
-        Alert.alert("Address not found", "We found your location, but could not convert it into an address.");
+        Alert.alert(t("Address not found"), t("We found your location, but could not convert it into an address."));
         return;
       }
 
@@ -400,7 +392,7 @@ export default function StoreScreen() {
       }));
     } catch (error) {
       console.warn("[Store] Location fetch failed", error);
-      Alert.alert("Could not fetch location", error instanceof Error ? error.message : "Please enter address manually.");
+      Alert.alert(t("Could not fetch location"), error instanceof Error ? error.message : t("Please enter address manually."));
     } finally {
       setIsLocating(false);
     }
@@ -410,7 +402,7 @@ export default function StoreScreen() {
     if (!cartLines.length || isCheckingOut) return;
 
     if (!address.name.trim() || !address.phone.trim() || !address.line1.trim()) {
-      Alert.alert("Delivery details needed", "Please enter your name, phone, and address.");
+      Alert.alert(t("Delivery details needed"), t("Please enter your name, phone, and address."));
       return;
     }
 
@@ -419,14 +411,25 @@ export default function StoreScreen() {
       const data = await createStoreOrder({
         items: cartLines.map((line) => ({ productId: line.product._id, quantity: line.item.quantity })),
         shippingAddress: address,
+        paymentMethod,
       });
       const { order, payment } = data;
+
+      if (payment?.provider === "cod") {
+        Alert.alert(t("Order placed"), `${t("Order")} ${order.orderNumber} ${t("is confirmed for Cash on Delivery.")}`);
+        setCart([]);
+        setCartVisible(false);
+        setAddress(EMPTY_ADDRESS);
+        await loadProducts();
+        return;
+      }
+
       const RazorpayCheckout = getRazorpayCheckout();
 
       if (!payment?.enabled) {
         Alert.alert(
-          "Order created",
-          "Razorpay keys are not configured yet. The order was saved in backend as pending payment."
+          t("Order created"),
+          t("Razorpay keys are not configured yet. The order was saved in backend as pending payment.")
         );
         setCart([]);
         setCartVisible(false);
@@ -436,7 +439,7 @@ export default function StoreScreen() {
       }
 
       if (!RazorpayCheckout) {
-        Alert.alert("Order ready", `Order ${order.orderNumber} was created. Razorpay native checkout is unavailable in this build.`);
+        Alert.alert(t("Order ready"), `${t("Order")} ${order.orderNumber} ${t("was created. Razorpay native checkout is unavailable in this build.")}`);
         setCart([]);
         setCartVisible(false);
         setAddress(EMPTY_ADDRESS);
@@ -462,13 +465,13 @@ export default function StoreScreen() {
         razorpay_signature: result.razorpay_signature,
       });
 
-      Alert.alert("Payment successful", "Your order is confirmed.");
+      Alert.alert(t("Payment successful"), t("Your order is confirmed."));
       setCart([]);
       setCartVisible(false);
       setAddress(EMPTY_ADDRESS);
       await loadProducts();
     } catch (error: any) {
-      Alert.alert("Checkout failed", error?.message || "Please try again.");
+      Alert.alert(t("Checkout failed"), error?.message || t("Please try again."));
     } finally {
       setIsCheckingOut(false);
     }
@@ -483,17 +486,35 @@ export default function StoreScreen() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadProducts({ refreshing: true })} />}
           contentContainerStyle={{ paddingBottom: 142, paddingHorizontal: 16 }}
         >
+          <View style={{ paddingTop: 6, flexDirection: "row", justifyContent: "flex-end" }}>
+            <TouchableOpacity
+              activeOpacity={0.86}
+              onPress={() => router.push("/store-orders")}
+              style={{
+                height: 42,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: SCREEN_COLORS.border,
+                backgroundColor: SCREEN_COLORS.card,
+                paddingHorizontal: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Ionicons name="receipt-outline" size={20} color={SCREEN_COLORS.primary} />
+              <Text style={{ color: SCREEN_COLORS.text, fontSize: 13, fontWeight: "900" }}>{t("My Orders")}</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={{ paddingTop: 18, paddingBottom: 16 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 14 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, fontWeight: "900", marginBottom: 8 }}>
-                  NUTRIMED PHARMACY
+                  {t("NUTRIMED PHARMACY")}
                 </Text>
                 <Text style={{ color: SCREEN_COLORS.text, fontSize: 28, fontWeight: "900", lineHeight: 34 }}>
-                  Medicines & wellness
-                </Text>
-                <Text style={{ color: SCREEN_COLORS.textMuted, fontSize: 14, lineHeight: 20, marginTop: 8 }}>
-                  Shop admin-managed products with cart, checkout, and saved orders.
+                  {t("Medicines & wellness")}
                 </Text>
               </View>
 
@@ -521,27 +542,21 @@ export default function StoreScreen() {
             <View style={{ marginTop: 18, backgroundColor: "#EAF7F1", borderRadius: 8, padding: 14, flexDirection: "row", gap: 12, alignItems: "center" }}>
               <Ionicons name="shield-checkmark" size={22} color="#047857" />
               <Text style={{ color: "#065F46", flex: 1, lineHeight: 20, fontWeight: "700" }}>
-                Genuine products, secure payment, backend order tracking.
+                {t("Genuine products, secure payment, backend order tracking.")}
               </Text>
             </View>
 
-            <View style={{ marginTop: 14, flexDirection: "row", gap: 10 }}>
-              <View style={{ flex: 1, height: 48, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, backgroundColor: SCREEN_COLORS.card, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 }}>
+            <View style={{ marginTop: 14 }}>
+              <View style={{ height: 48, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, backgroundColor: SCREEN_COLORS.card, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, gap: 8 }}>
                 <Ionicons name="search" size={18} color={SCREEN_COLORS.textMuted} />
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
-                  placeholder="Search medicines, vitamins..."
+                  placeholder={t("Search medicines, vitamins...")}
                   placeholderTextColor={SCREEN_COLORS.textMuted}
                   style={{ flex: 1, color: SCREEN_COLORS.text, fontSize: 14 }}
                 />
               </View>
-              <TouchableOpacity
-                onPress={() => setOrdersVisible(true)}
-                style={{ width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, backgroundColor: SCREEN_COLORS.card, alignItems: "center", justifyContent: "center" }}
-              >
-                <Ionicons name="receipt-outline" size={22} color={SCREEN_COLORS.primary} />
-              </TouchableOpacity>
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 14 }}>
@@ -561,7 +576,7 @@ export default function StoreScreen() {
                     }}
                   >
                     <Text style={{ color: isActive ? "#fff" : SCREEN_COLORS.text, fontSize: 13, fontWeight: "800" }}>
-                      {category}
+                      {t(category)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -572,7 +587,7 @@ export default function StoreScreen() {
           {isLoading ? (
             <View style={{ paddingVertical: 70, alignItems: "center" }}>
               <ActivityIndicator color={SCREEN_COLORS.primary} />
-              <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 12 }}>Loading pharmacy</Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 12 }}>{t("Loading pharmacy")}</Text>
             </View>
           ) : message ? (
             <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 8 }}>
@@ -580,8 +595,8 @@ export default function StoreScreen() {
             </View>
           ) : visibleProducts.length === 0 ? (
             <View style={{ padding: 18, backgroundColor: SCREEN_COLORS.card, borderRadius: 8 }}>
-              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginBottom: 6 }}>No products found</Text>
-              <Text style={{ color: SCREEN_COLORS.textMuted }}>Add matching products from the admin panel.</Text>
+              <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginBottom: 6 }}>{t("No products found")}</Text>
+              <Text style={{ color: SCREEN_COLORS.textMuted }}>{t("Add matching products from the admin panel.")}</Text>
             </View>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
@@ -617,8 +632,8 @@ export default function StoreScreen() {
               paddingHorizontal: 16,
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "900" }}>{cartCount} item{cartCount > 1 ? "s" : ""}</Text>
-            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>View cart · {formatPrice(payableTotal)}</Text>
+            <Text style={{ color: "#fff", fontWeight: "900" }}>{cartCount} {cartCount > 1 ? t("items") : t("item")}</Text>
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>{t("View cart")} - {formatPrice(payableTotal)}</Text>
           </TouchableOpacity>
         ) : null}
 
@@ -663,7 +678,7 @@ export default function StoreScreen() {
                   }}
                 >
                   <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>
-                    {Number(selectedProduct.stock ?? 0) <= 0 ? "Out of stock" : "Add to cart"}
+                    {Number(selectedProduct.stock ?? 0) <= 0 ? t("Out of stock") : t("Add to cart")}
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -678,7 +693,7 @@ export default function StoreScreen() {
           <SafeAreaView style={{ backgroundColor: SCREEN_COLORS.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: "90%" }} edges={["bottom"]}>
             <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "900" }}>Cart</Text>
+                <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "900" }}>{t("Cart")}</Text>
                 <TouchableOpacity onPress={() => setCartVisible(false)}>
                   <Ionicons name="close" size={24} color={SCREEN_COLORS.primaryDark} />
                 </TouchableOpacity>
@@ -687,7 +702,7 @@ export default function StoreScreen() {
               {!cartLines.length ? (
                 <View style={{ alignItems: "center", paddingVertical: 34 }}>
                   <Ionicons name="cart-outline" size={34} color={SCREEN_COLORS.primary} />
-                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 10 }}>Your cart is empty</Text>
+                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 10 }}>{t("Your cart is empty")}</Text>
                 </View>
               ) : (
                 <>
@@ -710,7 +725,7 @@ export default function StoreScreen() {
 
                   <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 14, marginTop: 14 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900", flex: 1 }}>Delivery address</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900", flex: 1 }}>{t("Delivery address")}</Text>
                       <TouchableOpacity
                         activeOpacity={0.85}
                         disabled={isLocating}
@@ -733,7 +748,7 @@ export default function StoreScreen() {
                           <Ionicons name="locate" size={16} color={SCREEN_COLORS.primary} />
                         )}
                         <Text style={{ color: SCREEN_COLORS.primary, fontSize: 12, fontWeight: "900" }}>
-                          {isLocating ? "Fetching" : "Use location"}
+                          {isLocating ? t("Fetching") : t("Use location")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -749,7 +764,7 @@ export default function StoreScreen() {
                         key={key}
                         value={address[key as keyof ShippingAddress]}
                         onChangeText={(value) => updateAddress(key as keyof ShippingAddress, value)}
-                        placeholder={placeholder}
+                        placeholder={t(placeholder)}
                         placeholderTextColor={SCREEN_COLORS.textMuted}
                         style={{ minHeight: 44, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, color: SCREEN_COLORS.text, paddingHorizontal: 12, marginBottom: 9, backgroundColor: SCREEN_COLORS.background }}
                       />
@@ -757,17 +772,54 @@ export default function StoreScreen() {
                   </View>
 
                   <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 14, marginTop: 14, gap: 8 }}>
+                    <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900", marginBottom: 4 }}>{t("Payment method")}</Text>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      {[
+                        { value: "cod" as const, label: "Cash on Delivery", icon: "cash-outline" as const },
+                        { value: "razorpay" as const, label: "Online payment", icon: "card-outline" as const },
+                      ].map((method) => {
+                        const isSelected = paymentMethod === method.value;
+                        return (
+                          <TouchableOpacity
+                            key={method.value}
+                            activeOpacity={0.85}
+                            onPress={() => setPaymentMethod(method.value)}
+                            style={{
+                              flex: 1,
+                              minHeight: 48,
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: isSelected ? SCREEN_COLORS.primary : SCREEN_COLORS.border,
+                              backgroundColor: isSelected ? SCREEN_COLORS.iconBg : SCREEN_COLORS.background,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexDirection: "row",
+                              gap: 6,
+                              paddingHorizontal: 8,
+                            }}
+                          >
+                            <Ionicons name={method.icon} size={17} color={isSelected ? SCREEN_COLORS.primary : SCREEN_COLORS.textMuted} />
+                            <Text style={{ color: isSelected ? SCREEN_COLORS.primary : SCREEN_COLORS.text, fontSize: 12, fontWeight: "900", textAlign: "center" }}>
+                              {t(method.label)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 14, marginTop: 14, gap: 8 }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <Text style={{ color: SCREEN_COLORS.textMuted }}>Subtotal</Text>
+                      <Text style={{ color: SCREEN_COLORS.textMuted }}>{t("Subtotal")}</Text>
                       <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800" }}>{formatPrice(subtotal)}</Text>
                     </View>
                     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <Text style={{ color: SCREEN_COLORS.textMuted }}>Delivery</Text>
-                      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800" }}>{shippingFee ? formatPrice(shippingFee) : "Free"}</Text>
+                      <Text style={{ color: SCREEN_COLORS.textMuted }}>{t("Delivery")}</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "800" }}>{shippingFee ? formatPrice(shippingFee) : t("Free")}</Text>
                     </View>
                     <View style={{ height: 1, backgroundColor: SCREEN_COLORS.border, marginVertical: 4 }} />
                     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}>Total</Text>
+                      <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}>{t("Total")}</Text>
                       <Text style={{ color: SCREEN_COLORS.text, fontSize: 16, fontWeight: "900" }}>{formatPrice(payableTotal)}</Text>
                     </View>
                   </View>
@@ -777,8 +829,14 @@ export default function StoreScreen() {
                     onPress={() => void checkout()}
                     style={{ height: 54, borderRadius: 8, backgroundColor: SCREEN_COLORS.primary, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: 14, opacity: isCheckingOut ? 0.65 : 1 }}
                   >
-                    {isCheckingOut ? <ActivityIndicator color="#fff" /> : <Ionicons name="card" size={19} color="#fff" />}
-                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>Checkout</Text>
+                    {isCheckingOut ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Ionicons name={paymentMethod === "cod" ? "cash" : "card"} size={19} color="#fff" />
+                    )}
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "900" }}>
+                      {paymentMethod === "cod" ? t("Place COD order") : t("Pay online")}
+                    </Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -787,43 +845,6 @@ export default function StoreScreen() {
         </View>
       </Modal>
 
-      <Modal visible={ordersVisible} animationType="slide" transparent onRequestClose={() => setOrdersVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(3,17,31,0.42)", justifyContent: "flex-end" }}>
-          <Pressable style={{ flex: 1 }} onPress={() => setOrdersVisible(false)} />
-          <SafeAreaView style={{ backgroundColor: SCREEN_COLORS.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: "78%" }} edges={["bottom"]}>
-            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <Text style={{ color: SCREEN_COLORS.text, fontSize: 22, fontWeight: "900" }}>Orders</Text>
-                <TouchableOpacity onPress={() => setOrdersVisible(false)}><Ionicons name="close" size={24} color={SCREEN_COLORS.primaryDark} /></TouchableOpacity>
-              </View>
-              {orders.length ? (
-                <View style={{ gap: 10 }}>
-                  {orders.map((order) => (
-                    <View key={order._id} style={{ backgroundColor: SCREEN_COLORS.card, borderRadius: 8, borderWidth: 1, borderColor: SCREEN_COLORS.border, padding: 12 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
-                        <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900" }}>{order.orderNumber}</Text>
-                        <Text style={{ color: SCREEN_COLORS.primary, fontWeight: "900" }}>{order.status}</Text>
-                      </View>
-                      <Text style={{ color: SCREEN_COLORS.textMuted, marginTop: 5 }}>{new Date(order.createdAt).toLocaleString()}</Text>
-                      <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 8 }}>{formatPrice(order.total)}</Text>
-                      {(order.items || []).map((item) => (
-                        <Text key={`${order._id}-${item.name}`} style={{ color: SCREEN_COLORS.textMuted, marginTop: 4 }}>
-                          {item.name} x {item.quantity}
-                        </Text>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={{ alignItems: "center", paddingVertical: 34 }}>
-                  <Ionicons name="receipt-outline" size={34} color={SCREEN_COLORS.primary} />
-                  <Text style={{ color: SCREEN_COLORS.text, fontWeight: "900", marginTop: 10 }}>No orders yet</Text>
-                </View>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

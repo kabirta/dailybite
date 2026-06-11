@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { type Auth, onAuthStateChanged, type User } from "firebase/auth";
 import {
   ActionSheetIOS,
@@ -28,7 +28,9 @@ import {
   ScreenBackground,
 } from "../components/ScreenBackground";
 import { auth as rawAuth } from "../src/config/firebase";
+import { useLanguage } from "../src/i18n/LanguageContext";
 import { signOutUser } from "../src/services/authService";
+import { getDailySummary, getMyProfile, getMyProfileStats } from "../src/services/backendApi";
 
 const AVATAR_STORAGE_KEY = "@nutrimed_ai_by_cmc_avatar_uri";
 const CARD = SCREEN_COLORS.card;
@@ -41,19 +43,70 @@ const ACCENT = SCREEN_COLORS.primary;
 const auth = rawAuth as Auth;
 
 const PROFILE_PLACEHOLDERS = {
-  streak: 7,
-  foodsLogged: 42,
-  daysActive: 14,
+  streak: 0,
+  mealsLogged: 0,
+  activeDays: 0,
   age: "Not set",
   height: "Not set",
   weight: "Not set",
   goal: "Stay Healthy",
   calorieGoal: 3000,
-  waterGoal: 8,
+  waterGoal: 2500,
   caloriesConsumed: 0,
   waterConsumed: 0,
   exerciseMin: 0,
 };
+
+const GOAL_LABELS: Record<string, string> = {
+  weight_loss: "Weight loss",
+  weight_gain: "Weight gain",
+  maintenance: "Maintain weight",
+};
+
+function formatNumber(value: unknown, fractionDigits = 0) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return numericValue.toLocaleString("en-US", {
+    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: 0,
+  });
+}
+
+function formatProfileSnapshot(profile: any) {
+  const age = formatNumber(profile?.age);
+  const height = formatNumber(profile?.height, 1);
+  const weight = formatNumber(profile?.weight, 1);
+  const goal = typeof profile?.goal === "string" ? profile.goal : "";
+
+  return {
+    age: age ? `${age} yrs` : PROFILE_PLACEHOLDERS.age,
+    height: height ? `${height} cm` : PROFILE_PLACEHOLDERS.height,
+    weight: weight ? `${weight} kg` : PROFILE_PLACEHOLDERS.weight,
+    goal: GOAL_LABELS[goal] ?? PROFILE_PLACEHOLDERS.goal,
+  };
+}
+
+function formatTodayProgress(summary: any) {
+  const caloriesConsumed = Math.round(Number(summary?.caloriesConsumed || 0));
+  const calorieGoal = Math.round(Number(summary?.calorieTarget || PROFILE_PLACEHOLDERS.calorieGoal));
+  const waterConsumed = Math.round(Number(summary?.water?.totalMl || 0));
+  const waterGoal = Math.round(Number(summary?.water?.goalMl || PROFILE_PLACEHOLDERS.waterGoal));
+  const exerciseMin = Math.round(Number(summary?.exercise?.totalMinutes || 0));
+  const exerciseGoal = Math.round(Number(summary?.exercise?.goalMinutes || 30));
+
+  return {
+    caloriesConsumed,
+    calorieGoal: calorieGoal > 0 ? calorieGoal : PROFILE_PLACEHOLDERS.calorieGoal,
+    waterConsumed,
+    waterGoal: waterGoal > 0 ? waterGoal : PROFILE_PLACEHOLDERS.waterGoal,
+    exerciseMin,
+    exerciseGoal: exerciseGoal > 0 ? exerciseGoal : 30,
+  };
+}
 
 type SettingRowProps = {
   icon: React.ComponentProps<typeof Ionicons>["name"];
@@ -162,30 +215,6 @@ function MetricCard({
       </View>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function PreferenceTile({
-  icon,
-  label,
-  value,
-  tint,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>["name"];
-  label: string;
-  value: string;
-  tint: string;
-}) {
-  return (
-    <View style={styles.preferenceTile}>
-      <View
-        style={[styles.preferenceTileIcon, { backgroundColor: `${tint}20` }]}
-      >
-        <Ionicons name={icon} size={18} color={tint} />
-      </View>
-      <Text style={styles.preferenceTileLabel}>{label}</Text>
-      <Text style={styles.preferenceTileValue}>{value}</Text>
     </View>
   );
 }
@@ -306,10 +335,30 @@ function SettingRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [profileStats, setProfileStats] = useState({
+    streak: PROFILE_PLACEHOLDERS.streak,
+    mealsLogged: PROFILE_PLACEHOLDERS.mealsLogged,
+    activeDays: PROFILE_PLACEHOLDERS.activeDays,
+  });
+  const [profileSnapshot, setProfileSnapshot] = useState({
+    age: PROFILE_PLACEHOLDERS.age,
+    height: PROFILE_PLACEHOLDERS.height,
+    weight: PROFILE_PLACEHOLDERS.weight,
+    goal: PROFILE_PLACEHOLDERS.goal,
+  });
+  const [todayProgress, setTodayProgress] = useState({
+    calorieGoal: PROFILE_PLACEHOLDERS.calorieGoal,
+    waterGoal: PROFILE_PLACEHOLDERS.waterGoal,
+    caloriesConsumed: PROFILE_PLACEHOLDERS.caloriesConsumed,
+    waterConsumed: PROFILE_PLACEHOLDERS.waterConsumed,
+    exerciseMin: PROFILE_PLACEHOLDERS.exerciseMin,
+    exerciseGoal: 30,
+  });
 
   const displayName = getDisplayName(currentUser);
   const email = getEmail(currentUser);
@@ -323,9 +372,59 @@ export default function ProfileScreen() {
       email,
       joinedDate,
       ...PROFILE_PLACEHOLDERS,
+      ...profileSnapshot,
+      ...profileStats,
+      ...todayProgress,
     }),
-    [displayName, email, joinedDate],
+    [displayName, email, joinedDate, profileSnapshot, profileStats, todayProgress],
   );
+
+  const loadProfileData = useCallback(() => {
+    if (!currentUser) {
+      setProfileStats({
+        streak: PROFILE_PLACEHOLDERS.streak,
+        mealsLogged: PROFILE_PLACEHOLDERS.mealsLogged,
+        activeDays: PROFILE_PLACEHOLDERS.activeDays,
+      });
+      setProfileSnapshot({
+        age: PROFILE_PLACEHOLDERS.age,
+        height: PROFILE_PLACEHOLDERS.height,
+        weight: PROFILE_PLACEHOLDERS.weight,
+        goal: PROFILE_PLACEHOLDERS.goal,
+      });
+      setTodayProgress({
+        calorieGoal: PROFILE_PLACEHOLDERS.calorieGoal,
+        waterGoal: PROFILE_PLACEHOLDERS.waterGoal,
+        caloriesConsumed: PROFILE_PLACEHOLDERS.caloriesConsumed,
+        waterConsumed: PROFILE_PLACEHOLDERS.waterConsumed,
+        exerciseMin: PROFILE_PLACEHOLDERS.exerciseMin,
+        exerciseGoal: 30,
+      });
+      return () => undefined;
+    }
+
+    let isMounted = true;
+
+    Promise.all([getMyProfile(), getMyProfileStats(), getDailySummary(new Date(), { persist: false })])
+      .then(([profile, stats, summary]) => {
+        if (!isMounted) return;
+
+        setProfileSnapshot(formatProfileSnapshot(profile));
+        setTodayProgress(formatTodayProgress(summary));
+        setProfileStats({
+          streak: Number(stats?.streak || 0),
+          mealsLogged: Number(stats?.mealsLogged || 0),
+          activeDays: Number(stats?.activeDays || 0),
+        });
+      })
+      .catch((error) => {
+        console.warn("[Profile] Failed to load profile data", error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     AsyncStorage.getItem(AVATAR_STORAGE_KEY).then((uri) => {
@@ -346,6 +445,8 @@ export default function ProfileScreen() {
 
     return unsubscribe;
   }, [router]);
+
+  useFocusEffect(loadProfileData);
 
   const saveAvatar = async (uri: string) => {
     setAvatarUri(uri);
@@ -494,7 +595,7 @@ export default function ProfileScreen() {
                   />
                 </Pressable>
 
-                <Text style={styles.topBarTitle}>Profile</Text>
+                <Text style={styles.topBarTitle}>{t("Profile")}</Text>
 
                 <Pressable style={styles.iconButton}>
                   <Ionicons
@@ -542,13 +643,9 @@ export default function ProfileScreen() {
 
               <View style={styles.heroMetaRow}>
                 <View style={styles.pill}>
-                  <Ionicons name="flash" size={12} color={ACCENT} />
-                  <Text style={styles.pillText}>Firebase auth</Text>
-                </View>
-                <View style={styles.pill}>
                   <Ionicons name="time-outline" size={12} color="#F8C44F" />
                   <Text style={styles.pillText}>
-                    Member since {profileData.joinedDate}
+                    {t("Member since")} {profileData.joinedDate}
                   </Text>
                 </View>
               </View>
@@ -557,19 +654,19 @@ export default function ProfileScreen() {
                 <MetricCard
                   icon="flame-outline"
                   value={profileData.streak}
-                  label="Streak"
+                  label={t("Streak")}
                   tint="#F97316"
                 />
                 <MetricCard
                   icon="restaurant-outline"
-                  value={profileData.foodsLogged}
-                  label="Meals logged"
+                  value={profileData.mealsLogged}
+                  label={t("Meals logged")}
                   tint="#38BDF8"
                 />
                 <MetricCard
                   icon="calendar-outline"
-                  value={profileData.daysActive}
-                  label="Active days"
+                  value={profileData.activeDays}
+                  label={t("Active days")}
                   tint={ACCENT}
                 />
               </View>
@@ -577,30 +674,30 @@ export default function ProfileScreen() {
           </View>
 
           <SectionTitle
-            title="Body Snapshot"
-            subtitle="These can be connected to onboarding or saved profile fields next."
+            title={t("Body Snapshot")}
+            subtitle={t("Your saved onboarding and profile details.")}
           />
           <View style={styles.grid}>
             <DetailCard
-              label="Age"
+              label={t("Age")}
               value={profileData.age}
               icon="time-outline"
               tint="#F97316"
             />
             <DetailCard
-              label="Height"
+              label={t("Height")}
               value={profileData.height}
               icon="resize-outline"
               tint="#38BDF8"
             />
             <DetailCard
-              label="Weight"
+              label={t("Weight")}
               value={profileData.weight}
               icon="barbell-outline"
               tint="#A78BFA"
             />
             <DetailCard
-              label="Goal"
+              label={t("Goal")}
               value={profileData.goal}
               icon="flag-outline"
               tint={ACCENT}
@@ -608,12 +705,12 @@ export default function ProfileScreen() {
           </View>
 
           <SectionTitle
-            title="Today's Progress"
-            subtitle="A quick glance at today's baseline stats."
+            title={t("Today's Progress")}
+            subtitle={t("A quick glance at today's baseline stats.")}
           />
           <View style={styles.progressStack}>
             <ProgressCard
-              label="Calories"
+              label={t("Calories")}
               value={profileData.caloriesConsumed}
               total={profileData.calorieGoal}
               unit="kcal"
@@ -621,47 +718,23 @@ export default function ProfileScreen() {
               tint="#F97316"
             />
             <ProgressCard
-              label="Water"
+              label={t("Water")}
               value={profileData.waterConsumed}
               total={profileData.waterGoal}
-              unit="glasses"
+              unit="ml"
               icon="water-outline"
               tint="#38BDF8"
             />
             <ProgressCard
-              label="Exercise"
+              label={t("Exercise")}
               value={profileData.exerciseMin}
-              total={30}
+              total={profileData.exerciseGoal}
               unit="min"
               icon="walk-outline"
               tint={ACCENT}
             />
           </View>
 
-          <SectionTitle
-            title="Preferences"
-            subtitle="Core settings that shape your nutrition experience."
-          />
-          <View style={styles.preferenceGrid}>
-            <PreferenceTile
-              icon="scale-outline"
-              label="Units"
-              value="Metric"
-              tint="#4F8CF7"
-            />
-            <PreferenceTile
-              icon="restaurant-outline"
-              label="Diet Type"
-              value="Balanced"
-              tint={ACCENT}
-            />
-            <PreferenceTile
-              icon="fitness-outline"
-              label="Activity"
-              value="Moderate"
-              tint="#F97316"
-            />
-          </View>
           <View style={styles.notificationCard}>
             <View style={styles.notificationOrb}>
               <Ionicons
@@ -671,10 +744,10 @@ export default function ProfileScreen() {
               />
             </View>
             <View style={styles.notificationCopy}>
-              <Text style={styles.notificationEyebrow}>Smart reminders</Text>
-              <Text style={styles.notificationTitle}>Notifications</Text>
+              <Text style={styles.notificationEyebrow}>{t("Smart reminders")}</Text>
+              <Text style={styles.notificationTitle}>{t("Notifications")}</Text>
               <Text style={styles.notificationText}>
-                Meal reminders and progress nudges throughout the day.
+                {t("Meal reminders and progress nudges throughout the day.")}
               </Text>
             </View>
             <Switch
@@ -686,8 +759,8 @@ export default function ProfileScreen() {
           </View>
 
           <SectionTitle
-            title="Account"
-            subtitle="Your signed-in identity and support tools."
+            title={t("Account")}
+            subtitle={t("Your signed-in identity and support tools.")}
           />
           <View style={styles.accountHeroCard}>
             <View style={styles.accountHeroTop}>
@@ -706,15 +779,15 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.accountMetaRow}>
               <View style={styles.accountMetaPill}>
-                <Text style={styles.accountMetaLabel}>Provider</Text>
+                <Text style={styles.accountMetaLabel}>{t("Provider")}</Text>
                 <Text style={styles.accountMetaValue}>{providerLabel}</Text>
               </View>
               <View style={styles.accountMetaPill}>
-                <Text style={styles.accountMetaLabel}>Plan</Text>
-                <Text style={styles.accountMetaValue}>Free</Text>
+                <Text style={styles.accountMetaLabel}>{t("Plan")}</Text>
+                <Text style={styles.accountMetaValue}>{t("Free")}</Text>
               </View>
               <View style={styles.accountMetaPill}>
-                <Text style={styles.accountMetaLabel}>Joined</Text>
+                <Text style={styles.accountMetaLabel}>{t("Joined")}</Text>
                 <Text style={styles.accountMetaValue}>{joinedDate}</Text>
               </View>
             </View>
@@ -725,9 +798,9 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
               onPress={() => router.push("/premium-plan")}
             >
-              <Text style={styles.premiumTitle}>Upgrade to Premium</Text>
+              <Text style={styles.premiumTitle}>{t("Upgrade to Premium")}</Text>
               <Text style={styles.premiumSubtitle}>
-                Unlock advanced insights and tailored plans
+                {t("Unlock advanced insights and tailored plans")}
               </Text>
             </TouchableOpacity>
 
@@ -736,9 +809,9 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
               onPress={() => router.push("/help-support")}
             >
-              <Text style={styles.actionTitle}>Help and Support</Text>
+              <Text style={styles.actionTitle}>{t("Help and Support")}</Text>
               <Text style={styles.actionSubtitle}>
-                FAQs, troubleshooting, and contact options
+                {t("FAQs, troubleshooting, and contact options")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -761,7 +834,7 @@ export default function ProfileScreen() {
                   activeOpacity={0.8}
                   onPress={handleSignOut} // your logout function
                 >
-                  <Text style={styles.signOutText}>Sign Out</Text>
+                  <Text style={styles.signOutText}>{t("Sign Out")}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -984,40 +1057,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10,
     paddingHorizontal: 16,
-  },
-  preferenceGrid: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-  },
-  preferenceTile: {
-    flex: 1,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  preferenceTileIcon: {
-    height: 38,
-    width: 38,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    marginBottom: 14,
-  },
-  preferenceTileLabel: {
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  preferenceTileValue: {
-    marginTop: 8,
-    color: TEXT,
-    fontSize: 18,
-    fontWeight: "700",
   },
   detailCard: {
     width: "47%",

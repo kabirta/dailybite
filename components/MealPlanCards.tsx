@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "../src/i18n/LanguageContext";
 
 export interface MealPlan {
   id: string;
@@ -61,6 +62,8 @@ function MealPlanCard({
   plan: MealPlan;
   onPress?: () => void;
 }) {
+  const { t } = useLanguage();
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -106,7 +109,7 @@ function MealPlanCard({
             lineHeight: 18,
           }}
         >
-          {plan.title}
+          {t(plan.title)}
         </Text>
         <Text
           style={{
@@ -139,7 +142,7 @@ function MealPlanCard({
             }}
             numberOfLines={1}
           >
-            {plan.provider}
+            {t(plan.provider)}
           </Text>
         </View>
       </View>
