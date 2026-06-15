@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { Header } from "../components/Header";
 import { ScreenBackground, SCREEN_COLORS } from "../components/ScreenBackground";
+import { useLanguage } from "../src/i18n/LanguageContext";
 import { getDiaryAnalytics } from "../src/services/backendApi";
 
 // ─── Data (unchanged) ─────────────────────────────────────────────────────────
@@ -172,6 +173,8 @@ function Card({
 }
 
 function SectionTitle({ text }: { text: string }) {
+  const { t } = useLanguage();
+
   return (
     <Text
       style={{
@@ -183,7 +186,7 @@ function SectionTitle({ text }: { text: string }) {
         paddingBottom: 12,
       }}
     >
-      {text}
+      {t(text)}
     </Text>
   );
 }
@@ -195,6 +198,8 @@ function RowDivider() {
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 function ReportsHeader() {
+  const { t } = useLanguage();
+
   return (
     <View
       style={{
@@ -250,7 +255,7 @@ function ReportsHeader() {
       {/* Right: Goals + locate */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <Text style={{ color: TEXT_PRIMARY, fontSize: 22, fontWeight: "700" }}>
-          Goals
+          {t("Goals")}
         </Text>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -279,6 +284,7 @@ function WeekPicker({
   selectedRange: ReportRange;
   onChange: (range: ReportRange) => void;
 }) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const selectedIndex = REPORT_RANGE_OPTIONS.findIndex((option) => option.key === selectedRange);
   const selectedOption = REPORT_RANGE_OPTIONS[selectedIndex] ?? REPORT_RANGE_OPTIONS[1];
@@ -330,7 +336,7 @@ function WeekPicker({
           }}
         >
           <Text style={{ color: TEXT_PRIMARY, fontSize: 16, fontWeight: "600" }}>
-            {selectedOption.label}
+            {t(selectedOption.label)}
           </Text>
           <Ionicons
             name={isOpen ? "chevron-up" : "chevron-down"}
@@ -381,7 +387,7 @@ function WeekPicker({
                     fontWeight: isSelected ? "700" : "500",
                   }}
                 >
-                  {option.label}
+                  {t(option.label)}
                 </Text>
                 {isSelected ? <Ionicons name="checkmark" size={18} color={ACCENT} /> : null}
               </TouchableOpacity>
@@ -404,12 +410,13 @@ function CaloriesPanel({
   report: any;
   range: ReportRange;
 }) {
+  const { t } = useLanguage();
   const totals = report?.totals ?? {};
   const meals = report?.meals ?? {};
   const dailyCalories = Math.round(totals.calories ?? 0);
   const days = analytics?.days ?? [];
   const weeklyCalories = days.reduce((sum: number, day: any) => sum + Number(day?.caloriesConsumed ?? 0), 0);
-  const rangeTitle = RANGE_TITLE[range];
+  const rangeTitle = t(RANGE_TITLE[range]);
   const calorieGoal = Math.round(report?.calorieTarget ?? 3000);
   const mealRows = MEAL_ROWS.map((meal) => {
     const key = meal.label === "Snacks/Other" ? "snacks" : meal.label.toLowerCase();
@@ -431,7 +438,7 @@ function CaloriesPanel({
       <Card>
         <View style={{ padding: 16 }}>
           <Text style={{ color: TEXT_SECONDARY, fontSize: 12, fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
-            {rangeTitle} Total
+            {rangeTitle} {t("Total")}
           </Text>
           <Text
             style={{
@@ -457,7 +464,7 @@ function CaloriesPanel({
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: TEXT_SECONDARY }} />
               <Text style={{ color: TEXT_SECONDARY, fontSize: 13 }}>
-                Daily Total: {dailyCalories}
+                {t("Daily Total")}: {dailyCalories}
               </Text>
             </View>
             <View
@@ -473,7 +480,7 @@ function CaloriesPanel({
             >
               <Ionicons name="flag" size={12} color={ACCENT} />
               <Text style={{ color: ACCENT, fontSize: 12, fontWeight: "600" }}>
-                Goal: {calorieGoal} kcal
+                {t("Goal")}: {calorieGoal} kcal
               </Text>
             </View>
           </View>
@@ -517,7 +524,7 @@ function CaloriesPanel({
               letterSpacing: 0.4,
             }}
           >
-            Cals{"\n"}(kcal)
+            {t("Cals")}{"\n"}(kcal)
           </Text>
         </View>
 
@@ -543,7 +550,7 @@ function CaloriesPanel({
                   }}
                 />
                 <Text style={{ color: TEXT_PRIMARY, fontSize: 14 }}>
-                  {meal.label}
+                  {t(meal.label)}
                 </Text>
               </View>
               <Text
@@ -587,13 +594,13 @@ function CaloriesPanel({
           }}
         >
           <Text style={{ flex: 1, color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Foods
+            {t("Foods")}
           </Text>
           <Text style={{ width: 90, textAlign: "center", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Times{"\n"}Eaten
+            {t("Times")}{"\n"}{t("Eaten")}
           </Text>
           <Text style={{ width: 72, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Cals{"\n"}(kcal)
+            {t("Cals")}{"\n"}(kcal)
           </Text>
         </View>
 
@@ -609,7 +616,7 @@ function CaloriesPanel({
           }}
         >
           <Text style={{ flex: 1, color: TEXT_PRIMARY, fontSize: 15, fontWeight: "700" }}>
-            Total
+            {t("Total")}
           </Text>
           <Text style={{ width: 90, textAlign: "center", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             {foodsCount || "-"}
@@ -626,13 +633,14 @@ function CaloriesPanel({
 // ─── Macros Panel ─────────────────────────────────────────────────────────────
 
 function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRange }) {
+  const { language, t } = useLanguage();
   const days = analytics?.days ?? [];
   const weeklyWater = days.reduce((total: number, day: any) => total + Number(day?.water?.totalMl ?? 0), 0);
   const dailyAverage = days.length ? Math.round(weeklyWater / days.length) : 0;
   const latestGoal = Number(days[days.length - 1]?.water?.goalMl ?? 2500);
   const weeklyGoal = latestGoal * Math.max(days.length, 1);
   const weeklyPct = Math.min(weeklyWater / Math.max(weeklyGoal, 1), 1);
-  const rangeTitle = RANGE_TITLE[range];
+  const rangeTitle = t(RANGE_TITLE[range]);
 
   return (
     <View style={{ gap: 12 }}>
@@ -657,7 +665,7 @@ function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRan
                   textTransform: "uppercase",
                 }}
               >
-                {rangeTitle} Hydration
+                {rangeTitle} {t("Hydration")}
               </Text>
               <Text
                 style={{
@@ -670,7 +678,7 @@ function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRan
                 {weeklyWater.toLocaleString()}
               </Text>
               <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
-                Daily Avg: {dailyAverage.toLocaleString()} ml
+                {t("Daily Avg")}: {dailyAverage.toLocaleString()} ml
               </Text>
             </View>
 
@@ -706,7 +714,7 @@ function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRan
               }}
             >
               <Text style={{ color: TEXT_PRIMARY, fontSize: 14, fontWeight: "700" }}>
-                Goal Progress
+                {t("Goal Progress")}
               </Text>
               <Text style={{ color: ACCENT, fontSize: 13, fontWeight: "700" }}>
                 {Math.round(weeklyPct * 100)}%
@@ -742,7 +750,7 @@ function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRan
                 {weeklyWater.toLocaleString()} ml
               </Text>
               <Text style={{ color: TEXT_SECONDARY, fontSize: 12 }}>
-                Goal: {weeklyGoal.toLocaleString()} ml
+                {t("Goal")}: {weeklyGoal.toLocaleString()} ml
               </Text>
             </View>
           </View>
@@ -758,7 +766,7 @@ function HydrationPanel({ analytics, range }: { analytics: any; range: ReportRan
           const totalMl = Number(day?.water?.totalMl ?? 0);
           const goalMl = Number(day?.water?.goalMl ?? latestGoal);
           const progress = Math.min(totalMl / Math.max(goalMl, 1), 1);
-          const label = date.toLocaleDateString(undefined, { weekday: "long" });
+          const label = date.toLocaleDateString(language === "bn" ? "bn-BD" : undefined, { weekday: "long" });
 
           return (
             <View key={`${day?.date ?? index}`}>
@@ -833,6 +841,7 @@ function TrendBars({
   color: string;
   unit: string;
 }) {
+  const { language } = useLanguage();
   const values = days.map((day) => Math.max(0, getValue(day)));
   const maxValue = Math.max(...values, 1);
 
@@ -854,7 +863,7 @@ function TrendBars({
               }}
             />
             <Text style={{ color: TEXT_SECONDARY, fontSize: 10, textAlign: "center" }}>
-              {date.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}
+              {date.toLocaleDateString(language === "bn" ? "bn-BD" : undefined, { weekday: "short" }).slice(0, 2)}
             </Text>
           </View>
         );
@@ -875,6 +884,7 @@ function TrendBars({
 }
 
 function MacrosPanel({ report }: { report: any }) {
+  const { t } = useLanguage();
   const totals = report?.totals ?? {};
   const targets = report?.macroTargets ?? {};
   const macroRows = [
@@ -888,7 +898,7 @@ function MacrosPanel({ report }: { report: any }) {
       <Card>
         <View style={{ padding: 16 }}>
           <Text style={{ color: TEXT_PRIMARY, fontSize: 16, fontWeight: "700", marginBottom: 14 }}>
-            Macronutrients
+            {t("Macronutrients")}
           </Text>
           <ChartGrid />
           <DayLabels />
@@ -906,10 +916,10 @@ function MacrosPanel({ report }: { report: any }) {
           }}
         >
           <Text style={{ width: 80, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, marginRight: 16 }}>
-            Total
+            {t("Total")}
           </Text>
           <Text style={{ width: 64, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Goal
+            {t("Goal")}
           </Text>
         </View>
 
@@ -935,7 +945,7 @@ function MacrosPanel({ report }: { report: any }) {
                   }}
                 />
                 <Text style={{ color: TEXT_PRIMARY, fontSize: 14 }}>
-                  {macro.label}
+                  {t(macro.label)}
                 </Text>
               </View>
               <Text style={{ width: 80, textAlign: "right", color: TEXT_SECONDARY, fontSize: 14, marginRight: 16 }}>
@@ -964,16 +974,16 @@ function MacrosPanel({ report }: { report: any }) {
           }}
         >
           <Text style={{ flex: 1, color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Foods
+            {t("Foods")}
           </Text>
           <Text style={{ width: 72, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Carbs{"\n"}(g)
+            {t("Carbs")}{"\n"}(g)
           </Text>
           <Text style={{ width: 64, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Fat{"\n"}(g)
+            {t("Fat")}{"\n"}(g)
           </Text>
           <Text style={{ width: 64, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-            Prot{"\n"}(g)
+            {t("Prot")}{"\n"}(g)
           </Text>
         </View>
 
@@ -989,7 +999,7 @@ function MacrosPanel({ report }: { report: any }) {
           }}
         >
           <Text style={{ flex: 1, color: TEXT_PRIMARY, fontSize: 15, fontWeight: "700" }}>
-            Total
+            {t("Total")}
           </Text>
           <Text style={{ width: 72, textAlign: "right", color: TEXT_PRIMARY, fontSize: 18, fontWeight: "700" }}>
             {Math.round(totals.carbs ?? 0) || "-"}
@@ -1009,6 +1019,7 @@ function MacrosPanel({ report }: { report: any }) {
 // ─── Nutrients Panel ──────────────────────────────────────────────────────────
 
 function NutrientsPanel({ report }: { report: any }) {
+  const { t } = useLanguage();
   const totals = report?.totals ?? {};
   const targets = report?.macroTargets ?? {};
   const calorieGoal = Math.round(report?.calorieTarget ?? 3000);
@@ -1041,13 +1052,13 @@ function NutrientsPanel({ report }: { report: any }) {
         }}
       >
         <Text style={{ flex: 1, color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-          Nutrient
+          {t("Nutrient")}
         </Text>
         <Text style={{ width: 58, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-          Total
+          {t("Total")}
         </Text>
         <Text style={{ width: 66, textAlign: "right", color: TEXT_SECONDARY, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 }}>
-          Goal
+          {t("Goal")}
         </Text>
         {/* Delta header: [+/-] */}
         <View style={{ width: 58, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 1 }}>
@@ -1081,7 +1092,7 @@ function NutrientsPanel({ report }: { report: any }) {
                 marginRight: 8,
               }}
             >
-              {nutrient.label}
+              {t(nutrient.label)}
             </Text>
             <Text style={{ width: 58, textAlign: "right", color: TEXT_SECONDARY, fontSize: 13 }}>
               {nutrient.total}
@@ -1102,6 +1113,7 @@ function NutrientsPanel({ report }: { report: any }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ReportsScreen() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ReportTabKey>("nutrients");
   const [selectedRange, setSelectedRange] = useState<ReportRange>("week");
   const [analytics, setAnalytics] = useState<any>(null);
@@ -1200,7 +1212,7 @@ export default function ReportsScreen() {
                       letterSpacing: 0.5,
                     }}
                   >
-                    {tab.label}
+                    {t(tab.label)}
                   </Text>
                 </TouchableOpacity>
               );
